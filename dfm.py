@@ -1,3 +1,5 @@
+# CLAUDE GENERATED
+
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict
 from datetime import datetime, timedelta
@@ -114,6 +116,7 @@ class Route:
     def total_time(self, base_speed_mph: float = 50) -> float:
         distance = self.total_distance()
         drive_time = (distance * 0.621371) / base_speed_mph
+        # does this work if there's no break?
         stop_time = len(self.orders) * 2 * 0.25
         return drive_time + stop_time
 
