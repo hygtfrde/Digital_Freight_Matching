@@ -197,7 +197,7 @@ class PricingService:
         for i, route in enumerate(self.routes):
             if i < len(self.trucks):
                 truck = self.trucks[i]
-                can_match, reason = CriteriaMatcher.can_match_route(order, route, truck)
+                can_match, _ = CriteriaMatcher.can_match_route(order, route, truck)
                 if can_match:
                     current_profit = route.profitability
                     test_route = self._add_order_to_route(route, order)
