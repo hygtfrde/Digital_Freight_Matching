@@ -1600,3 +1600,12 @@ class CLIDashboard:
             print("\n⚙️ Generating report...")
             time.sleep(1)
             self.success_message("Report generated!")
+
+
+
+
+
+# =================== Main Application ===================
+if __name__ == '__main__':
+    dashboard = CLIDashboard()
+    dashboard.main_menu()
