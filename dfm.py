@@ -4,6 +4,10 @@
 Business logic module using unified schemas from schemas.py
 Maintains all original matching and pricing logic
 
+User Input → Validation → Business Logic (DFM) → Database → Feedback
+     ↑                                                        │
+     └────────────────────────────────────────────────────────┘
+
 +---------+     +---------+     +--------+     +-----------+
 |  Client |-----| C_Order |-----| Cargo  |-----| Package   |
 +---------+     +---------+     +--------+     +-----------+

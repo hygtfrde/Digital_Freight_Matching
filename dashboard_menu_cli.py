@@ -1,9 +1,6 @@
 """
 ========== DASHBOARD MENU ==========
 
-User Input → Validation → Business Logic (DFM) → Database → Feedback
-     ↑                                                        │
-     └────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    MAIN MENU                                │
@@ -67,10 +64,6 @@ User Input → Validation → Business Logic (DFM) → Database → Feedback
 """
 
 
-"""
-cli_dashboard.py - Complete CLI Dashboard for Digital Freight Matching System
-Implements full menu navigation with integration to API, DFM, and database modules
-"""
 
 import os
 import sys
@@ -136,6 +129,7 @@ class DashboardState:
         
         # Initialize pricing service with demo data
         self.initialize_demo_data()
+
     
     def initialize_demo_data(self):
         """Initialize with some demo data for testing"""
@@ -194,6 +188,10 @@ class CLIDashboard:
         self.running = True
     
     # ============= UTILITY METHODS =============
+
+    def exit_program(self):
+        print("Exiting the Digital Freight Matching System. Goodbye!")
+        self.running = False
     
     def clear_screen(self):
         """Clear terminal screen"""
@@ -1553,6 +1551,7 @@ class CLIDashboard:
         print("-" * 65)
         
         print("\nASCII Map Visualization")
+        print("  PLACEHOLDER FOR OSMNX")
         print("-" * 65)
         
         # Simple ASCII representation of coverage
