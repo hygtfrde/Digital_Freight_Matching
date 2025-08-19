@@ -944,6 +944,3 @@ class DFMDashboard:
         
         input("\nPress Enter to continue...")
     
-
-
-    
