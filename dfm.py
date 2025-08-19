@@ -375,7 +375,7 @@ def pretty_print_order(order: Order, indent: int = 0) -> None:
         print(f"{ind}  Contract type: {order.contract_type}")
 
 
-def demo():
+def dfm_demo():
     """
     Demo function showing the system in action
     Updated to use schema models
@@ -467,5 +467,4 @@ def demo():
 
 
 if __name__ == "__main__":
-    # Run demo when module is executed directly
-    demo()
+    dfm_demo()
