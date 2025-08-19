@@ -1,8 +1,15 @@
 from typing import List, Dict, Tuple, Optional
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from dfm import (
-    CargoType, Location, Package, Cargo, Order, Client,
-    Truck, Route, PricingService
+    Location, Truck, Route, PricingService
 )
+
+
+from utils import pretty_print_order
 
 
 def demo():
@@ -70,5 +77,4 @@ def demo():
         pretty_print_order(pending)
 
 if __name__ == "__main__":
-    # Uncomment to run the demo
-    # demo()
+    demo()
