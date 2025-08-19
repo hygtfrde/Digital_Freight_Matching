@@ -1,2 +1,8 @@
 venv/
 .idea/
+
+# ---------------- Ignore PyCache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd   

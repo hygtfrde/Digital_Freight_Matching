@@ -3,6 +3,38 @@ dashboard.py - Dashboard and CLI Interface for Digital Freight Matching System
 Integrates with navigation.py for menu management
 """
 
+"""
++-------------------------------------------------------+
+|                 🚛 Dashboard Methods                  |
++-------------------+------------------+----------------+
+|   Trucks          |   Routes         |   Orders       |
+|-------------------|------------------|----------------|
+| [ List Trucks ]   | [ List Routes ]  | [ List Orders ]|
+| [ Add Truck ]     | [ Add Route ]    | [ Add Order ]  |
+| [ Edit Truck ]    | [ Edit Route ]   | [ Edit Order ] |
+| [ Delete Truck ]  | [ Delete Route ] | [ Delete Order]|
+| [ View Loads ]    | [ Assign Truck ] | [ Match Order ]|
++-------------------+------------------+----------------+
+|   Clients         |   Locations      |   Packages     |
+|-------------------|------------------|----------------|
+| [ List Clients ]  | [ List Loc.  ]   | [ List Pkg.  ] |
+| [ Add Client ]    | [ Add Loc.   ]   | [ Add Pkg.   ] |
+| [ Edit Client ]   | [ Edit Loc.  ]   | [ Edit Pkg.  ] |
+| [ Delete Client ] | [ Delete Loc. ]  | [ Delete Pkg.] |
+| [ View Orders ]   | [ View Routes]   | [ Assign to  ] |
+|                   |                  |   Cargo        |
++-------------------+------------------+----------------+
+|   Cargo           |   Pricing/Match  |   Dashboard    |
+|-------------------|------------------|----------------|
+| [ List Cargo  ]   | [ Price Route ]  |  [Summary]     |
+| [ Add Cargo   ]   | [ Match Order ]  |  [KPIs]        |
+| [ Edit Cargo  ]   | [ Profitability] |  [Pending]     |
+| [ Delete Cargo]   | [ New Route   ]  |  [Utilization] |
+| [ Assign Pkg. ]   |                  |  [Alerts]      |
++-------------------------------------------------------+
+"""
+
+
 from dfm import (
     CargoType, Location, Package, Cargo, Order, Client,
     Truck, Route, PricingService, CriteriaMatcher
@@ -11,9 +43,11 @@ from navigation import (
     MenuSystem, Menu, MenuItem, MenuLevel, 
     create_crud_menu, create_report_menu
 )
+from utils import pretty_print_order
 from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime
+import os
 
 
 class DFMDashboard:
@@ -843,102 +877,18 @@ class DFMDashboard:
     
     # System Configuration Actions
     
-    def load_demo_data(self):
-        """Load demonstration data"""
-        print("\n🎮 LOADING DEMO DATA")
-        print("-" * 50)
-        
-        # Clear existing data
-        self.orders.clear()
-        self.trucks.clear()
-        self.routes.clear()
-        
-        # Load demo data from the demo function
-        demo_data = self.get_demo_data()
-        
-        self.trucks = demo_data['trucks']
-        self.routes = demo_data['routes']
-        self.pricing_service = demo_data['pricing_service']
-        
-        # Process demo orders
-        for order_data in demo_data['orders_data']:
-            self.pricing_service.process_order(order_data)
-        
-        self.has_demo_data = True
-        self.update_menu_context()
-        
-        print(f"\n✅ Demo data loaded:")
-        print(f"  • {len(self.trucks)} trucks")
-        print(f"  • {len(self.routes)} routes")
-        print(f"  • {len(demo_data['orders_data'])} orders processed")
-        print(f"  • {len(self.pricing_service.pending_orders)} pending orders")
-        
-        input("\nPress Enter to continue...")
-    
-    def get_demo_data(self) -> Dict[str, Any]:
-        """Get demo data configuration"""
-        # Example locations
-        loc1 = Location(latitude=37.7749, longitude=-122.4194)  # San Francisco
-        loc2 = Location(latitude=34.0522, longitude=-118.2437)  # Los Angeles
-        loc3 = Location(latitude=36.1699, longitude=-115.1398)  # Las Vegas
-        
-        # Example trucks
-        trucks = [
-            Truck(autonomy=600.0, capacity=100.0, type="standard"),
-            Truck(autonomy=800.0, capacity=150.0, type="refrigerated"),
-        ]
-        
-        # Example routes
-        routes = [
-            Route(origin=loc1, destiny=loc2, path=[loc1, loc3, loc2]),
-            Route(origin=loc2, destiny=loc3, path=[loc2, loc3]),
-        ]
-        
-        # Pricing service setup
-        cost_per_mile = 1.5
-        pricing_service = PricingService(routes=routes, trucks=trucks, cost_per_mile=cost_per_mile)
-        
-        # Example order data
-        orders_data = [
-            {
-                'cargo': {
-                    'packages': [
-                        (10.0, 5.0, 'standard'),
-                        (5.0, 2.5, 'fragile')
-                    ]
-                },
-                'pick-up': {'latitude': 37.7749, 'longitude': -122.4194},
-                'drop-off': {'latitude': 34.0522, 'longitude': -118.2437}
-            },
-            {
-                'cargo': {
-                    'packages': [
-                        (20.0, 8.0, 'refrigerated')
-                    ]
-                },
-                'pick-up': {'latitude': 36.1699, 'longitude': -115.1398},
-                'drop-off': {'latitude': 34.0522, 'longitude': -118.2437}
-            },
-            {
-                'cargo': {
-                    'packages': [
-                        (12.0, 6.0, 'hazmat')
-                    ]
-                },
-                'pick-up': {'latitude': 34.0522, 'longitude': -118.2437},
-                'drop-off': {'latitude': 36.1699, 'longitude': -115.1398}
-            }
-        ]
-        
-        return {
-            'trucks': trucks,
-            'routes': routes,
-            'pricing_service': pricing_service,
-            'orders_data': orders_data
-        }
-    
+
+
     def clear_all_data(self):
         """Clear all data from the system"""
+        print("Are you sure‼? This will remove all orders, trucks, routes, and demo data.")
+        confirm = input("Type 'yes' to confirm: ").strip().lower()
+        if confirm != 'yes':
+            print("\n❌ Action cancelled.")
+            input("\nPress Enter to continue...")
+            return
+        print("\n🗑️ CLEARING ALL DATA")
+        print("-" * 50)
         self.orders.clear()
         self.trucks.clear()
         self.routes.clear()
@@ -994,18 +944,6 @@ class DFMDashboard:
         
         input("\nPress Enter to continue...")
     
-    def database_settings(self):
-        """Configure database settings"""
-        print("\n🗄️ DATABASE SETTINGS")
-        print("Database integration not yet implemented")
-        print("Currently using in-memory storage")
-        
-        input("\nPress Enter to continue...")
+
+
     
-    def matching_parameters(self):
-        """Configure matching parameters"""
-        self.configure_matching()
-    
-    def system_info(self):
-        """Display system information"""
-        print("\
