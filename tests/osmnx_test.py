@@ -5,7 +5,7 @@ Simple tool to compare road distance vs linear distance between two points
 and visualize the route on a map.
 """
 
-import osmnx_test as ox
+import tests.osmnx_test as ox
 import networkx as nx
 import folium
 import math
