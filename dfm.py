@@ -1,4 +1,39 @@
-# CLAUDE GENERATED
+"""
+========== DIGITAL FREIGHT MATCHING SYSTEM ==========
+
++---------+     +---------+     +--------+     +-----------+
+|  Client |-----| C_Order |-----| Cargo  |-----| Package   |
++---------+     +---------+     +--------+     +-----------+
+      |             |             |               |
+      |             |             |               |
+      |        pickup/dropoff     |           type|
+      |         Location          |               |
+      |             |             |               |
+      |             |             |               |
+      +--------+    |             |               |
+               |    |             |               |
+           +--------+             |               |
+           | Location|------------+               |
+           +--------+                             |
+                                                 \|/
+                                           +--------------+
+                                           |  CargoType   |
+                                           +--------------+
+
++---------+     +-------+     +----------+     +-----------+
+|  Truck  |-----| Route |-----| T_Order  |     | Location  |
++---------+     +-------+     +----------+     +-----------+
+
++-------------------+
+|  PricingService   |
++-------------------+
+| - routes          |
+| - trucks          |
+| - pending_orders  |
+| - bar_scanner?    |
++-------------------+
+
+"""
 
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict

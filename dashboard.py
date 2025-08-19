@@ -1,9 +1,9 @@
 """
 ========== DIGITAL FREIGHT MATCHING SYSTEM ==========
 
-+---------+     +-------+     +--------+     +-----------+
-|  Client |-----| Order |-----| Cargo  |-----| Package   |
-+---------+     +-------+     +--------+     +-----------+
++---------+     +---------+     +--------+     +-----------+
+|  Client |-----| C_Order |-----| Cargo  |-----| Package   |
++---------+     +---------+     +--------+     +-----------+
       |             |             |               |
       |             |             |               |
       |        pickup/dropoff     |           type|
@@ -20,9 +20,9 @@
                                            |  CargoType   |
                                            +--------------+
 
-+---------+     +-------+     +--------+     +-----------+
-|  Truck  |-----| Route |-----| Order  |     | Location  |
-+---------+     +-------+     +--------+     +-----------+
++---------+     +-------+     +----------+     +-----------+
+|  Truck  |-----| Route |-----| T_Order  |     | Location  |
++---------+     +-------+     +----------+     +-----------+
 
 +-------------------+
 |  PricingService   |
@@ -32,6 +32,7 @@
 | - pending_orders  |
 | - bar_scanner?    |
 +-------------------+
+
 
 """
 
@@ -122,13 +123,13 @@ def demo():
     for pending in pricing_service.pending_orders:
         pretty_print_order(pending)
 
-    # Optionally, try to create a new route from pending orders (if implemented)
-    new_route = pricing_service.create_new_route_from_pending()
-    if new_route:
-        print("\nCreated new route from pending orders:")
-        print(new_route)
-    else:
-        print("\nNo new route created from pending orders (not enough orders or feature not implemented).")
+    # # Optionally, try to create a new route from pending orders (if implemented)
+    # new_route = pricing_service.create_new_route_from_pending()
+    # if new_route:
+    #     print("\nCreated new route from pending orders:")
+    #     print(new_route)
+    # else:
+    #     print("\nNo new route created from pending orders (not enough orders or feature not implemented).")
 
 if __name__ == "__main__":
     demo()
