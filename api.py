@@ -1,35 +1,3 @@
-"""
-+-------------------------------------------------------+
-|                 🚛 Freight Control Panel              |
-+-------------------+------------------+----------------+
-|   Trucks          |   Routes         |   Orders       |
-|-------------------|------------------|----------------|
-| [ List Trucks ]   | [ List Routes ]  | [ List Orders ]|
-| [ Add Truck ]     | [ Add Route ]    | [ Add Order ]  |
-| [ Edit Truck ]    | [ Edit Route ]   | [ Edit Order ] |
-| [ Delete Truck ]  | [ Delete Route ] | [ Delete Order]|
-| [ View Loads ]    | [ Assign Truck ] | [ Match Order ]|
-+-------------------+------------------+----------------+
-|   Clients         |   Locations      |   Packages     |
-|-------------------|------------------|----------------|
-| [ List Clients ]  | [ List Loc.  ]   | [ List Pkg.  ] |
-| [ Add Client ]    | [ Add Loc.   ]   | [ Add Pkg.   ] |
-| [ Edit Client ]   | [ Edit Loc.  ]   | [ Edit Pkg.  ] |
-| [ Delete Client ] | [ Delete Loc. ]  | [ Delete Pkg.] |
-| [ View Orders ]   | [ View Routes]   | [ Assign to  ] |
-|                   |                  |   Cargo        |
-+-------------------+------------------+----------------+
-|   Cargo           |   Pricing/Match  |   Dashboard    |
-|-------------------|------------------|----------------|
-| [ List Cargo  ]   | [ Price Route ]  |  [Summary]     |
-| [ Add Cargo   ]   | [ Match Order ]  |  [KPIs]        |
-| [ Edit Cargo  ]   | [ Profitability] |  [Pending]     |
-| [ Delete Cargo]   | [ New Route   ]  |  [Utilization] |
-| [ Assign Pkg. ]   |                  |  [Alerts]      |
-+-------------------------------------------------------+
-"""
-
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
