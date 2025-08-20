@@ -598,14 +598,14 @@ class DatabaseManager:
         logger.info("Ready for Digital Freight Matching operations!")
 
 
-def main(force_reinit: bool = False):
-    """Main initialization function"""
+def cli_init(force: bool = False):
+    """Initialize database with contract data"""
     logger.info("Creating database tables...")
     create_tables()
     
     with Session(engine) as session:
         db_manager = DatabaseManager(session)
-        success = db_manager.initialize_database(force_reinit=force_reinit)
+        success = db_manager.initialize_database(force_reinit=force)
         
         if success:
             logger.info("Database initialization completed successfully")
@@ -613,10 +613,106 @@ def main(force_reinit: bool = False):
             logger.info("Database initialization skipped (data already exists)")
 
 
-if __name__ == "__main__":
-    # Check for force flag
-    force = "--force" in sys.argv or "-f" in sys.argv
-    if force:
-        logger.warning("Force reinitializing database (may create duplicates)")
+def cli_verify():
+    """Verify database contents and integrity"""
+    with Session(engine) as session:
+        db_manager = DatabaseManager(session)
+        counts = db_manager.verify_integrity()
+        
+        print("\n" + "="*60)
+        print("DATABASE VERIFICATION SUMMARY")
+        print("="*60)
+        for entity, count in counts.items():
+            print(f"{entity.capitalize()}: {count}")
+        print("="*60)
+
+
+def cli_status():
+    """Show database status"""
+    with Session(engine) as session:
+        db_manager = DatabaseManager(session)
+        status = db_manager.get_system_status()
+        
+        print("\n" + "="*60)
+        print("DATABASE STATUS")
+        print("="*60)
+        print(f"Total Routes: {status.total_routes}")
+        print(f"Daily Profit/Loss: ${status.daily_profit_loss:.2f}")
+        print(f"Pending Orders: {status.pending_orders}")
+        print(f"Active Contracts: {status.active_contracts}")
+        print(f"Truck Utilization: {status.truck_utilization:.1f}%")
+        print(f"Clients: {status.clients}")
+        print(f"Locations: {status.locations}")
+        print(f"Trucks: {status.trucks}")
+        print(f"Orders: {status.orders}")
+        print(f"Cargo Loads: {status.cargo_loads}")
+        print(f"Packages: {status.packages}")
+        print(f"Last Updated: {status.last_updated}")
+        print("="*60)
+
+
+def cli_reset(confirm: bool = False):
+    """Reset database by removing the file"""
+    if not confirm:
+        print("Warning: This will delete ALL database data!")
+        confirm_input = input("Type 'yes' to confirm: ")
+        if confirm_input.lower() != 'yes':
+            print("Reset cancelled")
+            return
     
-    main(force_reinit=force)
+    with Session(engine) as session:
+        db_manager = DatabaseManager(session)
+        success = db_manager.reset_database(confirm=True)
+        if success:
+            print("Database reset completed successfully")
+
+
+def main():
+    """Main CLI function"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Digital Freight Matcher Database Manager")
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    
+    # Init command
+    init_parser = subparsers.add_parser('init', help='Initialize database with contract data')
+    init_parser.add_argument('--force', '-f', action='store_true', 
+                           help='Force initialization even if data exists (may create duplicates)')
+    
+    # Verify command
+    subparsers.add_parser('verify', help='Verify database contents and integrity')
+    
+    # Status command
+    subparsers.add_parser('status', help='Show database status')
+    
+    # Reset command
+    reset_parser = subparsers.add_parser('reset', help='Reset database (removes all data)')
+    reset_parser.add_argument('--confirm', action='store_true', 
+                            help='Confirm database reset')
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        # Default behavior - initialize database
+        force = "--force" in sys.argv or "-f" in sys.argv
+        if force:
+            logger.warning("Force reinitializing database (may create duplicates)")
+        cli_init(force=force)
+        return
+    
+    try:
+        if args.command == 'init':
+            cli_init(force=args.force)
+        elif args.command == 'verify':
+            cli_verify()
+        elif args.command == 'status':
+            cli_status()
+        elif args.command == 'reset':
+            cli_reset(confirm=args.confirm)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
