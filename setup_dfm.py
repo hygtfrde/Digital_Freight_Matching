@@ -104,8 +104,8 @@ def initialize_database():
     venv_python = get_venv_python()
     
     try:
-        # Run the unified initialization script with venv python
-        subprocess.check_call([venv_python, "unified_db_init.py"])
+        # Run the safe initialization script with venv python
+        subprocess.check_call([venv_python, "safe_db_init.py"])
         print("Database initialized successfully!")
         return True
     except subprocess.CalledProcessError as e:

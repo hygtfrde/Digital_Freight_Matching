@@ -22,8 +22,8 @@ def run_initialization():
     """Run the database initialization"""
     print("🗄️  Initializing database...")
     try:
-        # Import and run initialization after dependencies are installed
-        exec(open('init_contract_data.py').read())
+        # Import and run safe initialization after dependencies are installed
+        exec(open('safe_db_init.py').read())
         print("✅ Database initialized successfully!")
         return True
     except Exception as e:

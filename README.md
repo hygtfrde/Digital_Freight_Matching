@@ -1,19 +1,70 @@
 # Digital Freight Matching
 
-## (dfm.py)
-- The Digital Freight Matching (dfm.py) module serves as the intelligent core of the logistics system, implementing solutions to the problem of matching freight orders to available trucks and routes.
+A logistics optimization system for matching freight orders to available trucks and routes.
 
-## schemas/schemas.py
-- Single source of truth for matching database structure.
+## Quick Start
 
-## api.py
-- Basic CRUD methods for trucks, orders, routes
+### Database Setup (Refactored - Safe Initialization)
 
-## dashboard_menu_cli.py
-- CLI menu program with solutions and features (currently stubbed for moth methods)
+The database setup has been refactored to prevent duplicate data seeding:
 
-## dashboard_methods.py
-- More complex api methods and features
+```bash
+# Safe initialization (recommended)
+python manage_db.py init
+
+# Check database status
+python manage_db.py status
+
+# Verify data integrity
+python manage_db.py verify
+```
+
+See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed information about the safe initialization system.
+
+### Alternative Setup Methods
+
+```bash
+# Full setup with virtual environment
+python setup_dfm.py
+
+# Simple setup
+python setup_database.py
+
+# Manual initialization
+python safe_db_init.py
+```
+
+### Start the Application
+
+```bash
+# API Server
+python app/main.py
+
+# CLI Dashboard
+python dashboard_menu_cli.py
+```
+
+## Core Components
+
+### Database & API
+- **app/database.py**: SQLModel-based database schema
+- **app/main.py**: FastAPI server with REST endpoints
+- **safe_db_init.py**: Safe database initialization (prevents duplicates)
+- **manage_db.py**: CLI for database management
+
+### Business Logic
+- **dfm.py**: Digital Freight Matching core logic
+- **schemas/schemas.py**: Data validation schemas
+- **api.py**: Basic CRUD operations
+
+### User Interfaces
+- **dashboard_menu_cli.py**: Interactive CLI dashboard
+- **dashboard_methods.py**: Dashboard implementation methods
+
+### Setup & Utilities
+- **setup_dfm.py**: Complete environment setup
+- **verify_database.py**: Database verification
+- **utils.py**: Shared utilities
 
 
 
