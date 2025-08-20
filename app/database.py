@@ -23,7 +23,6 @@ class Location(SQLModel, table=True):
     marked: bool = Field(default=False, description="Whether location is marked/flagged")
 
     # Relationships
-    client_locations: List["Client"] = Relationship(back_populates="locations")
     origin_routes: List["Route"] = Relationship(
         back_populates="location_origin",
         sa_relationship_kwargs={"foreign_keys": "[Route.location_origin_id]"}
@@ -51,7 +50,6 @@ class Client(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    locations: List[Location] = Relationship(back_populates="client_locations")
     orders: List["Order"] = Relationship(back_populates="client")
 
 
@@ -186,7 +184,7 @@ class Truck(SQLModel, table=True):
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./logistics.db")
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 
 def create_tables():
