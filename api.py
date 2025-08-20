@@ -4,6 +4,19 @@ from sqlmodel import Session, select
 from logistics_database2 import (
     engine, get_session,
     CargoType, Location, Package, Cargo, Order, Truck, Route
+
+
+# ================== Requirements API Methods
+
+# get_capacity_after_drop
+
+# is_within_km
+
+# deviation_time_for_stop
+
+# ======================
+
+
 )
 from schemas.schemas import (
     CargoType as SchemaCargoType,

@@ -13,3 +13,10 @@ def pretty_print_order(order, indent=0):
         print(f"{ind}  Client: {order.client}")
     if order.contract_type:
         print(f"{ind}  Contract type: {order.contract_type}")
+
+
+# get_capacity_after_drop
+
+# is_within_km
+
+# deviation_time_for_stop

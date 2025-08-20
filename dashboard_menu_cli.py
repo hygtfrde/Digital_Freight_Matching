@@ -128,7 +128,7 @@ class DashboardState:
         self.last_search = ""
         
         # Initialize pricing service with demo data
-        self.initialize_demo_data()
+        # self.initialize_demo_data()
 
     
     def initialize_demo_data(self):
