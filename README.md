@@ -24,7 +24,22 @@ A logistics optimization system for matching freight orders to available truck r
 
 ## Quick Start
 
-### 1. Initialize Database
+### 1. Setup Virtual Environment
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+# venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Initialize Database
 ```bash
 # Initialize with contract data (safe - prevents duplicates)
 python db_manager.py init
@@ -33,7 +48,7 @@ python db_manager.py init
 python db_manager.py init --force
 ```
 
-### 2. Verify Database
+### 3. Verify Database
 ```bash
 # Check database status and metrics
 python db_manager.py status
@@ -42,7 +57,7 @@ python db_manager.py status
 python db_manager.py verify
 ```
 
-### 3. Use the System
+### 4. Use the System
 ```bash
 # Interactive CLI Dashboard
 python cli_dashboard.py
@@ -153,6 +168,10 @@ Location ← Order → Route → Truck
 
 ### Running Tests
 ```bash
+# Activate virtual environment first
+source venv/bin/activate  # On macOS/Linux
+# venv\Scripts\activate   # On Windows
+
 # Test database manager (comprehensive test suite)
 python test_db_manager.py
 
@@ -207,16 +226,22 @@ The system tracks key performance indicators:
 
 **Database not found**
 ```bash
+# Activate virtual environment first
+source venv/bin/activate  # On macOS/Linux
 python db_manager.py init  # Initialize database
 ```
 
 **Import errors**
 ```bash
-pip install -r requirements.txt  # Install dependencies
+# Activate virtual environment and install dependencies
+source venv/bin/activate  # On macOS/Linux
+pip install -r requirements.txt
 ```
 
 **Database integrity issues**
 ```bash
+# Activate virtual environment first
+source venv/bin/activate  # On macOS/Linux
 python db_manager.py verify  # Check integrity
 python db_manager.py reset --confirm  # Reset if needed
 python db_manager.py init  # Reinitialize
