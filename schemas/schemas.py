@@ -236,30 +236,55 @@ class Truck(BaseModel):
     
     def available_capacity(self) -> float:
         """Calculate remaining capacity"""
+        if self.capacity <= 0:
+            return 0.0
         used = sum(cargo.total_volume() for cargo in self.cargo_loads)
-        return self.capacity - used
+        return max(0.0, self.capacity - used)
     
     def can_fit(self, volume: float) -> bool:
         """Check if truck can accommodate additional volume"""
+        if volume < 0:
+            return False
         return volume <= self.available_capacity()
     
     def can_fit_cargo(self, cargo: "Cargo") -> bool:
-        """Check if truck can fit a specific cargo"""
-        return self.can_fit(cargo.total_volume())
+        """Check if truck can fit a specific cargo (volume and compatibility)"""
+        if not cargo:
+            return False
+        
+        # Check volume capacity
+        if not self.can_fit(cargo.total_volume()):
+            return False
+        
+        # Check cargo type compatibility
+        if not self.is_compatible_with_cargo(cargo):
+            return False
+        
+        # Check compatibility with existing cargo
+        for existing_cargo in self.cargo_loads:
+            if not cargo.is_compatible_with(existing_cargo):
+                return False
+        
+        return True
     
     def can_reach(self, distance: float) -> bool:
         """Check if truck can cover the distance"""
+        if distance < 0:
+            return False
         return distance <= self.autonomy
     
     def utilization_percent(self) -> float:
         """Calculate capacity utilization percentage"""
-        if self.capacity == 0:
+        if self.capacity <= 0:
             return 0.0
         used = sum(cargo.total_volume() for cargo in self.cargo_loads)
-        return (used / self.capacity) * 100
+        return min(100.0, (used / self.capacity) * 100)
     
     def is_compatible_with_cargo(self, cargo: "Cargo") -> bool:
         """Check if truck type is compatible with cargo type"""
+        if not cargo or not cargo.packages:
+            return True
+        
         cargo_types = cargo.get_types()
         
         # Refrigerated trucks needed for refrigerated cargo
@@ -271,6 +296,55 @@ class Truck(BaseModel):
             return False
         
         return True
+    
+    def get_capacity_after_drop(self, route: "Route", drop_location: "Location") -> float:
+        """Calculate remaining capacity after dropping cargo at specified location"""
+        if not route or not drop_location:
+            return self.available_capacity()
+        
+        # Find all cargo that gets dropped at this location
+        dropped_volume = 0.0
+        
+        for cargo in self.cargo_loads:
+            # Check if this cargo's order has destination at drop_location
+            if (
+                cargo.order and 
+                cargo.order.location_destiny and 
+                cargo.order.location_destiny.id == drop_location.id
+            ):
+                dropped_volume += cargo.total_volume()
+        
+        # Return current available capacity plus what gets dropped
+        return min(self.capacity, self.available_capacity() + dropped_volume)
+    
+    def get_cargo_for_location(self, location: "Location") -> List["Cargo"]:
+        """Get all cargo destined for a specific location"""
+        if not location:
+            return []
+        
+        cargo_for_location = []
+        for cargo in self.cargo_loads:
+            if (
+                cargo.order and 
+                cargo.order.location_destiny and 
+                cargo.order.location_destiny.id == location.id
+            ):
+                cargo_for_location.append(cargo)
+        
+        return cargo_for_location
+    
+    def total_cargo_volume(self) -> float:
+        """Calculate total volume of all cargo currently loaded"""
+        return sum(cargo.total_volume() for cargo in self.cargo_loads)
+    
+    def total_cargo_weight(self) -> float:
+        """Calculate total weight of all cargo currently loaded"""
+        return sum(cargo.total_weight() for cargo in self.cargo_loads)
+    
+    def is_overloaded(self) -> bool:
+        """Check if truck is over capacity"""
+        return self.total_cargo_volume() > self.capacity
+
 
 
 # ============= FORWARD REFERENCES UPDATE =============
