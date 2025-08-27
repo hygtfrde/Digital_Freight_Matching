@@ -9,20 +9,42 @@ from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 from typing import List, Optional
 import uvicorn
+import sys
+import os
 
-from .database import (
-    Client,
-    Location,
-    Order,
-    Route,
-    Truck,
-    Cargo,
-    Package,
-    CargoType,
-    get_session,
-    create_tables,
-    engine
-)
+# Add parent directory to path for direct execution
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from app.database import (
+        Client,
+        Location,
+        Order,
+        Route,
+        Truck,
+        Cargo,
+        Package,
+        CargoType,
+        get_session,
+        create_tables,
+        engine
+    )
+except ImportError:
+    # Fallback for direct execution
+    from database import (
+        Client,
+        Location,
+        Order,
+        Route,
+        Truck,
+        Cargo,
+        Package,
+        CargoType,
+        get_session,
+        create_tables,
+        engine
+    )
 
 # Create FastAPI app
 app = FastAPI(
@@ -326,4 +348,4 @@ def get_route_analytics(session: Session = Depends(get_session)):
     return result
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0",
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000)
