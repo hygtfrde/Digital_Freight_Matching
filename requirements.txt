@@ -15,3 +15,6 @@ python-multipart>=0.0.6
 osmnx>=1.6.0
 networkx>=3.0
 folium>=0.14.0
+
+# Testing dependencies
+pytest>=7.0.0
