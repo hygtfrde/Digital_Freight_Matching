@@ -6,14 +6,14 @@
   - Set up basic configuration and logging
   - _Requirements: 3.1, 3.3, 4.1_
 
-- [ ] 2. Implement core data models and utilities
-- [ ] 2.1 Create BoundingBox and result data classes
+- [-] 2. Implement core data models and utilities
+- [x] 2.1 Create BoundingBox and result data classes
   - Implement BoundingBox dataclass with adaptive padding methods
   - Create DistanceResult and RouteResult dataclasses
   - Add coordinate validation and error handling utilities
   - _Requirements: 1.1, 1.3, 4.4_
 
-- [ ] 2.2 Implement NetworkCache class
+- [-] 2.2 Implement NetworkCache class
   - Create cache storage and retrieval mechanisms
   - Add cache expiration and cleanup functionality
   - Implement thread-safe cache operations
