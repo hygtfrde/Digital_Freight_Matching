@@ -480,7 +480,7 @@ class NetworkCache:
         # Round coordinates to avoid cache misses due to tiny differences
         return f"{bbox.north:.6f},{bbox.south:.6f},{bbox.east:.6f},{bbox.west:.6f}"
     
-    def _is_expired(self, cache_time: datetime, max_age_hours: Optional[int] = None) -> bool:
+    def _is_expired(self, cache_time: datetime, max_age_hours: Optional[float] = None) -> bool:
         """Check if cache entry is expired."""
         age_limit = max_age_hours if max_age_hours is not None else self.max_age_hours
         age_delta = timedelta(hours=age_limit)
@@ -563,7 +563,7 @@ class NetworkCache:
             
             logger.debug(f"Cached network for bbox: {cache_key}")
     
-    def clear_expired_cache(self, max_age_hours: Optional[int] = None) -> int:
+    def clear_expired_cache(self, max_age_hours: Optional[float] = None) -> int:
         """
         Remove expired cache entries.
         
