@@ -254,7 +254,7 @@ class RouteResult:
         if any(d < 0 for d in self.waypoint_distances):
             raise ValueError("Waypoint distances cannot be negative")
         
-        if self.calculation_method not in ["osmnx", "haversine", "cached", "mixed", "placeholder", "error"]:
+        if self.calculation_method not in ["osmnx", "haversine", "cached", "mixed", "placeholder", "error", "validation_error", "unreachable_segments"]:
             raise ValueError(f"Invalid calculation method: {self.calculation_method}")
     
     @property
@@ -1029,25 +1029,167 @@ class RouteCalculationService:
         
         return speed_defaults.get(highway_type, 50)  # Default to 50 km/h
     
-    def calculate_route_distance(self, waypoints: List) -> RouteResult:
+    def calculate_route_distance(self, waypoints: List, optimize_order: bool = False) -> RouteResult:
         """
         Calculate total distance for route with multiple waypoints.
         
         Args:
             waypoints: List of Location objects representing route waypoints
+            optimize_order: Whether to optimize waypoint order for shortest route
             
         Returns:
             RouteResult with total distance and time
         """
-        # Implementation will be added in later tasks
-        logger.info(f"Route calculation requested for {len(waypoints)} waypoints")
-        return RouteResult(
-            total_distance_km=0.0,
-            total_time_hours=0.0,
-            waypoint_distances=[],
-            calculation_method="placeholder",
-            network_available=self.osmnx_available
-        )
+        try:
+            # Validate input waypoints
+            validate_location_list(waypoints, min_locations=2)
+            
+            logger.debug(f"Calculating route distance for {len(waypoints)} waypoints, optimize={optimize_order}")
+            
+            # Optimize waypoint order if requested
+            if optimize_order and len(waypoints) > 2:
+                waypoints = self._optimize_waypoint_order(waypoints)
+                logger.debug("Waypoint order optimized")
+            
+            # Calculate distances between consecutive waypoints
+            waypoint_distances = []
+            total_distance = 0.0
+            total_time = 0.0
+            calculation_methods = []
+            
+            for i in range(len(waypoints) - 1):
+                current_waypoint = waypoints[i]
+                next_waypoint = waypoints[i + 1]
+                
+                # Calculate distance for this segment
+                segment_result = self.calculate_distance(current_waypoint, next_waypoint)
+                
+                if not segment_result.is_successful:
+                    logger.error(f"Failed to calculate distance for segment {i}: {segment_result.error}")
+                    return create_error_route_result(
+                        f"Segment {i} calculation failed: {segment_result.error}",
+                        "error"
+                    )
+                
+                waypoint_distances.append(segment_result.distance_km)
+                total_distance += segment_result.distance_km
+                
+                # Add drive time (use segment time if available, otherwise estimate)
+                if segment_result.drive_time_hours is not None:
+                    total_time += segment_result.drive_time_hours
+                else:
+                    # Fallback time estimation
+                    fallback_speed = self.config.get('fallback_speed_kmh', 80.0)
+                    total_time += segment_result.distance_km / fallback_speed
+                
+                calculation_methods.append(segment_result.calculation_method)
+            
+            # Add stop time for intermediate waypoints (15 minutes each)
+            # First and last waypoints don't get stop time
+            intermediate_stops = max(0, len(waypoints) - 2)
+            stop_time_hours = intermediate_stops * 0.25  # 15 minutes per stop
+            total_time += stop_time_hours
+            
+            # Determine overall calculation method
+            if all(method == "osmnx" for method in calculation_methods):
+                overall_method = "osmnx"
+            elif all(method == "haversine" for method in calculation_methods):
+                overall_method = "haversine"
+            else:
+                overall_method = "mixed"
+            
+            logger.debug(f"Route calculation complete: {total_distance:.2f}km, {total_time:.2f}h, method={overall_method}")
+            
+            result = RouteResult(
+                total_distance_km=total_distance,
+                total_time_hours=total_time,
+                waypoint_distances=waypoint_distances,
+                calculation_method=overall_method,
+                network_available=self.osmnx_available
+            )
+            
+            # Validate result consistency
+            if not result.validate_consistency():
+                logger.warning("Route result validation failed - waypoint distances don't sum to total")
+            
+            return result
+            
+        except CoordinateValidationError as e:
+            logger.error(f"Invalid waypoints for route calculation: {e}")
+            return create_error_route_result(str(e), "validation_error")
+        except Exception as e:
+            logger.error(f"Unexpected error in route calculation: {e}")
+            return create_error_route_result(f"Route calculation failed: {e}", "error")
+    
+    def _optimize_waypoint_order(self, waypoints: List) -> List:
+        """
+        Optimize waypoint order using nearest neighbor heuristic.
+        
+        This is a simple optimization that works well for small numbers of waypoints.
+        For larger numbers, more sophisticated algorithms like genetic algorithms
+        or simulated annealing could be used.
+        
+        Args:
+            waypoints: List of Location objects to optimize
+            
+        Returns:
+            List of Location objects in optimized order
+        """
+        if len(waypoints) <= 2:
+            return waypoints
+        
+        try:
+            logger.debug(f"Optimizing order for {len(waypoints)} waypoints")
+            
+            # Keep first and last waypoints fixed (start and end points)
+            start_point = waypoints[0]
+            end_point = waypoints[-1]
+            intermediate_points = waypoints[1:-1]
+            
+            if not intermediate_points:
+                return waypoints
+            
+            # Use nearest neighbor algorithm for intermediate points
+            optimized_intermediate = []
+            remaining_points = intermediate_points.copy()
+            current_point = start_point
+            
+            while remaining_points:
+                # Find nearest remaining point to current point
+                nearest_point = None
+                min_distance = float('inf')
+                
+                for point in remaining_points:
+                    try:
+                        # Use Haversine for optimization (faster than OSMnx)
+                        distance = current_point.distance_to(point)
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_point = point
+                    except Exception as e:
+                        logger.warning(f"Error calculating distance during optimization: {e}")
+                        # If distance calculation fails, just use the first remaining point
+                        nearest_point = remaining_points[0]
+                        break
+                
+                if nearest_point:
+                    optimized_intermediate.append(nearest_point)
+                    remaining_points.remove(nearest_point)
+                    current_point = nearest_point
+                else:
+                    # Fallback: add remaining points in original order
+                    optimized_intermediate.extend(remaining_points)
+                    break
+            
+            # Construct final optimized route
+            optimized_waypoints = [start_point] + optimized_intermediate + [end_point]
+            
+            logger.debug("Waypoint optimization completed")
+            return optimized_waypoints
+            
+        except Exception as e:
+            logger.warning(f"Waypoint optimization failed: {e}, using original order")
+            return waypoints
     
     def calculate_drive_time(self, distance_km: float, route_type: str = "highway") -> float:
         """
@@ -1063,6 +1205,46 @@ class RouteCalculationService:
         # Implementation will be added in later tasks
         speed_kmh = self.config.get('fallback_speed_kmh', 80.0)
         return distance_km / speed_kmh
+    
+    def calculate_route_distance_with_validation(self, waypoints: List, optimize_order: bool = False, 
+                                               max_segment_distance_km: float = 1000.0) -> RouteResult:
+        """
+        Calculate route distance with additional validation for unreachable locations.
+        
+        Args:
+            waypoints: List of Location objects representing route waypoints
+            optimize_order: Whether to optimize waypoint order for shortest route
+            max_segment_distance_km: Maximum allowed distance for a single segment
+            
+        Returns:
+            RouteResult with validation and error handling for unreachable locations
+        """
+        try:
+            # Validate input waypoints
+            validate_location_list(waypoints, min_locations=2)
+            
+            # Check for unreachable segments before full calculation
+            unreachable_segments = []
+            for i in range(len(waypoints) - 1):
+                current = waypoints[i]
+                next_wp = waypoints[i + 1]
+                
+                # Quick Haversine check for obviously unreachable segments
+                haversine_distance = current.distance_to(next_wp)
+                if haversine_distance > max_segment_distance_km:
+                    unreachable_segments.append((i, haversine_distance))
+            
+            if unreachable_segments:
+                error_msg = f"Unreachable segments found: {unreachable_segments}"
+                logger.error(error_msg)
+                return create_error_route_result(error_msg, "unreachable_segments")
+            
+            # Proceed with normal calculation
+            return self.calculate_route_distance(waypoints, optimize_order)
+            
+        except Exception as e:
+            logger.error(f"Route validation failed: {e}")
+            return create_error_route_result(f"Route validation failed: {e}", "validation_error")
     
     def is_location_near_route(self, location, route_points: List) -> Tuple[bool, float]:
         """
