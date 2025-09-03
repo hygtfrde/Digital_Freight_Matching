@@ -30,7 +30,7 @@
   - Write unit tests with mocked OSMnx calls
   - _Requirements: 1.1, 1.2, 3.3_
 
-- [ ] 3.2 Add multi-waypoint route calculation
+- [x] 3.2 Add multi-waypoint route calculation
   - Implement calculate_route_distance for multiple locations
   - Add route optimization for waypoint ordering
   - Handle edge cases with invalid or unreachable locations
