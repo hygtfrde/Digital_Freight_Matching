@@ -56,6 +56,8 @@ from schemas.schemas import (
     Route
 )
 
+from utils.print_format_utils import pretty_print_order
+
 
 class CriteriaMatcher:
     """
@@ -348,35 +350,6 @@ class PricingService:
 
 
 # ============= HELPER FUNCTIONS =============
-
-def pretty_print_order(order: Order, indent: int = 0) -> None:
-    """
-    Pretty print an order
-    Adapted to use schema's structure
-    """
-    ind = " " * indent
-    print(f"{ind}Order:")
-    
-    if order.location_origin:
-        print(f"{ind}  Pickup: Location(lat={order.location_origin.lat}, lng={order.location_origin.lng})")
-    
-    if order.location_destiny:
-        print(f"{ind}  Dropoff: Location(lat={order.location_destiny.lat}, lng={order.location_destiny.lng})")
-    
-    if order.cargo:
-        print(f"{ind}  Cargo:")
-        for cargo in order.cargo:
-            for pkg in cargo.packages:
-                print(f"{ind}    Package:")
-                print(f"{ind}      Volume: {pkg.volume}")
-                print(f"{ind}      Weight: {pkg.weight}")
-                print(f"{ind}      Type: {pkg.type.value}")
-    
-    if order.client:
-        print(f"{ind}  Client: {order.client.name if hasattr(order.client, 'name') else order.client}")
-    
-    if order.contract_type:
-        print(f"{ind}  Contract type: {order.contract_type}")
 
 
 def dfm_demo():
