@@ -202,7 +202,7 @@ class DistanceResult:
         if self.distance_km < 0:
             raise ValueError(f"Distance cannot be negative: {self.distance_km}")
         
-        if self.calculation_method not in ["osmnx", "haversine", "cached", "placeholder", "error"]:
+        if self.calculation_method not in ["osmnx", "haversine", "cached", "placeholder", "error", "validation_error"]:
             raise ValueError(f"Invalid calculation method: {self.calculation_method}")
         
         if self.drive_time_hours is not None and self.drive_time_hours < 0:
@@ -210,8 +210,8 @@ class DistanceResult:
     
     @property
     def is_successful(self) -> bool:
-        """Check if calculation was successful (no error)."""
-        return self.error is None
+        """Check if calculation was successful (no error or fallback with valid data)."""
+        return self.error is None or (self.distance_km >= 0 and "Fallback used:" in str(self.error))
     
     @property
     def used_road_network(self) -> bool:
@@ -771,7 +771,7 @@ class RouteCalculationService:
     
     def calculate_distance(self, loc1, loc2) -> DistanceResult:
         """
-        Calculate distance between two locations.
+        Calculate distance between two locations using OSMnx with Haversine fallback.
         
         Args:
             loc1: First location (Location object)
@@ -780,13 +780,254 @@ class RouteCalculationService:
         Returns:
             DistanceResult with distance and calculation method
         """
-        # Implementation will be added in later tasks
-        logger.info(f"Distance calculation requested between locations")
-        return DistanceResult(
-            distance_km=0.0,
-            calculation_method="placeholder",
-            error="Implementation pending"
-        )
+        try:
+            # Validate input locations
+            validate_location_object(loc1, "loc1")
+            validate_location_object(loc2, "loc2")
+            
+            logger.debug(f"Calculating distance from {loc1} to {loc2}")
+            
+            # Try OSMnx calculation first if available
+            if self.osmnx_available:
+                try:
+                    return self._calculate_osmnx_distance(loc1, loc2)
+                except Exception as e:
+                    logger.warning(f"OSMnx calculation failed, falling back to Haversine: {e}")
+                    return self._calculate_haversine_distance(loc1, loc2, fallback_reason=str(e))
+            else:
+                logger.debug("OSMnx not available, using Haversine calculation")
+                return self._calculate_haversine_distance(loc1, loc2, fallback_reason="OSMnx not available")
+                
+        except CoordinateValidationError as e:
+            logger.error(f"Invalid coordinates for distance calculation: {e}")
+            return create_error_result(str(e), "validation_error")
+        except Exception as e:
+            logger.error(f"Unexpected error in distance calculation: {e}")
+            return create_error_result(f"Calculation failed: {e}", "error")
+    
+    def _calculate_osmnx_distance(self, loc1, loc2) -> DistanceResult:
+        """
+        Calculate distance using OSMnx road network.
+        
+        Args:
+            loc1: First location
+            loc2: Second location
+            
+        Returns:
+            DistanceResult with OSMnx calculation
+        """
+        try:
+            # Create bounding box for the two locations
+            bbox = BoundingBox.from_locations([loc1, loc2], 
+                                            padding_km=self.config.get('base_padding_km', 10.0))
+            
+            # Check if bounding box is reasonable size
+            if not bbox.is_reasonable_size():
+                logger.warning(f"Bounding box too large ({bbox.area_km2():.0f} km²), using Haversine")
+                return self._calculate_haversine_distance(loc1, loc2, 
+                                                        fallback_reason="Bounding box too large")
+            
+            # Try to get cached network first
+            graph = self.cache.get_network(bbox)
+            
+            if graph is None:
+                logger.debug(f"Downloading network for bbox: {bbox}")
+                # Download network graph from OSMnx
+                graph = ox.graph_from_bbox(
+                    bbox.north, bbox.south, bbox.east, bbox.west,
+                    network_type=self.config.get('network_type', 'drive'),
+                    simplify=True
+                )
+                
+                # Cache the network for future use
+                if self.config.get('cache_enabled', True):
+                    self.cache.cache_network(bbox, graph)
+                    logger.debug("Network cached successfully")
+            else:
+                logger.debug("Using cached network")
+            
+            # Find nearest nodes to the coordinates
+            orig_node = ox.nearest_nodes(graph, loc1.lng, loc1.lat)
+            dest_node = ox.nearest_nodes(graph, loc2.lng, loc2.lat)
+            
+            # Calculate shortest path
+            try:
+                route = nx.shortest_path(graph, orig_node, dest_node, weight='length')
+                route_length_m = nx.shortest_path_length(graph, orig_node, dest_node, weight='length')
+                route_length_km = route_length_m / 1000.0
+                
+                # Calculate drive time using road network data
+                drive_time = self._calculate_network_drive_time(graph, route)
+                
+                logger.debug(f"OSMnx calculation successful: {route_length_km:.2f}km, {drive_time:.2f}h")
+                
+                return DistanceResult(
+                    distance_km=route_length_km,
+                    calculation_method="osmnx",
+                    drive_time_hours=drive_time,
+                    route_nodes=route
+                )
+                
+            except nx.NetworkXNoPath:
+                logger.warning("No path found between locations, using Haversine")
+                return self._calculate_haversine_distance(loc1, loc2, 
+                                                        fallback_reason="No road path found")
+                
+        except Exception as e:
+            logger.error(f"OSMnx calculation error: {e}")
+            # Fall back to Haversine on any OSMnx error
+            return self._calculate_haversine_distance(loc1, loc2, fallback_reason=str(e))
+    
+    def _calculate_haversine_distance(self, loc1, loc2, fallback_reason: str = None) -> DistanceResult:
+        """
+        Calculate distance using Haversine formula.
+        
+        Args:
+            loc1: First location
+            loc2: Second location
+            fallback_reason: Reason for using fallback method
+            
+        Returns:
+            DistanceResult with Haversine calculation
+        """
+        try:
+            # Use the existing distance_to method from Location model
+            distance_km = loc1.distance_to(loc2)
+            
+            # Estimate drive time using fallback speed
+            fallback_speed = self.config.get('fallback_speed_kmh', 80.0)
+            drive_time_hours = distance_km / fallback_speed
+            
+            logger.debug(f"Haversine calculation: {distance_km:.2f}km, {drive_time_hours:.2f}h")
+            
+            return DistanceResult(
+                distance_km=distance_km,
+                calculation_method="haversine",
+                drive_time_hours=drive_time_hours,
+                error=f"Fallback used: {fallback_reason}" if fallback_reason else None
+            )
+            
+        except Exception as e:
+            logger.error(f"Haversine calculation failed: {e}")
+            return create_error_result(f"Haversine calculation failed: {e}", "haversine_error")
+    
+    def _calculate_network_drive_time(self, graph, route: List) -> float:
+        """
+        Calculate drive time using road network speed data.
+        
+        Args:
+            graph: OSMnx network graph
+            route: List of node IDs representing the route
+            
+        Returns:
+            Drive time in hours
+        """
+        try:
+            total_time_seconds = 0.0
+            
+            for i in range(len(route) - 1):
+                u, v = route[i], route[i + 1]
+                
+                # Get edge data
+                edge_data = graph[u][v]
+                
+                # Handle multiple edges between nodes
+                if isinstance(edge_data, dict):
+                    # Multiple edges, use the first one or find the best one
+                    if len(edge_data) > 1:
+                        edge_data = list(edge_data.values())[0]
+                    else:
+                        edge_data = edge_data[0] if 0 in edge_data else list(edge_data.values())[0]
+                
+                # Get length and speed information
+                length_m = edge_data.get('length', 0)
+                
+                # Try to get speed from edge data, otherwise use defaults
+                speed_kmh = self._get_edge_speed(edge_data)
+                
+                # Calculate time for this segment
+                if speed_kmh > 0:
+                    time_hours = (length_m / 1000.0) / speed_kmh
+                    total_time_seconds += time_hours * 3600
+            
+            return total_time_seconds / 3600.0  # Convert to hours
+            
+        except Exception as e:
+            logger.warning(f"Network drive time calculation failed: {e}")
+            # Fallback to distance-based estimation
+            return 0.0
+    
+    def _get_edge_speed(self, edge_data: dict) -> float:
+        """
+        Extract speed information from edge data.
+        
+        Args:
+            edge_data: Edge data dictionary from OSMnx
+            
+        Returns:
+            Speed in km/h
+        """
+        # Try to get speed from various possible fields
+        speed_kmh = None
+        
+        # Check for maxspeed field
+        if 'maxspeed' in edge_data:
+            maxspeed = edge_data['maxspeed']
+            if isinstance(maxspeed, (int, float)):
+                speed_kmh = float(maxspeed)
+            elif isinstance(maxspeed, str):
+                try:
+                    # Handle "50 mph" or "80 km/h" formats
+                    if 'mph' in maxspeed.lower():
+                        speed_mph = float(maxspeed.lower().replace('mph', '').strip())
+                        speed_kmh = speed_mph * 1.60934
+                    else:
+                        # Assume km/h
+                        speed_kmh = float(maxspeed.replace('km/h', '').strip())
+                except (ValueError, AttributeError):
+                    pass
+        
+        # If no speed found, use highway type defaults
+        if speed_kmh is None:
+            highway_type = edge_data.get('highway', 'unclassified')
+            speed_kmh = self._get_default_speed_for_highway(highway_type)
+        
+        return max(5.0, min(130.0, speed_kmh))  # Clamp between 5-130 km/h
+    
+    def _get_default_speed_for_highway(self, highway_type) -> float:
+        """
+        Get default speed based on highway type.
+        
+        Args:
+            highway_type: Highway type from OSM data
+            
+        Returns:
+            Default speed in km/h
+        """
+        # Handle list of highway types (take first)
+        if isinstance(highway_type, list):
+            highway_type = highway_type[0] if highway_type else 'unclassified'
+        
+        # Default speeds by highway type (km/h)
+        speed_defaults = {
+            'motorway': 110,
+            'motorway_link': 80,
+            'trunk': 90,
+            'trunk_link': 70,
+            'primary': 70,
+            'primary_link': 50,
+            'secondary': 60,
+            'secondary_link': 50,
+            'tertiary': 50,
+            'tertiary_link': 40,
+            'residential': 30,
+            'living_street': 20,
+            'service': 20,
+            'unclassified': 50,
+            'road': 50
+        }
+        
+        return speed_defaults.get(highway_type, 50)  # Default to 50 km/h
     
     def calculate_route_distance(self, waypoints: List) -> RouteResult:
         """

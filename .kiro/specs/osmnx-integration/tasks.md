@@ -22,8 +22,8 @@
 
   # MERGE HAROLDS BRANCH BEFORE FOLLOWING STEPS:
 
-- [ ] 3. Build RouteCalculationService core functionality
-- [ ] 3.1 Implement basic distance calculation with OSMnx
+- [-] 3. Build RouteCalculationService core functionality
+- [x] 3.1 Implement basic distance calculation with OSMnx
   - Create calculate_distance method with OSMnx integration
   - Add fallback to Haversine when OSMnx fails
   - Implement error handling and logging
