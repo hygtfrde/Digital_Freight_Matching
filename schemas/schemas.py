@@ -12,6 +12,7 @@ from typing import Optional, List, Set
 from datetime import datetime
 from enum import Enum
 import math
+from math import radians, cos, sin, asin, sqrt
 
 
 # ============= ENUMS =============
@@ -174,6 +175,67 @@ class Route(BaseModel):
     
     # Additional path waypoints (not in DB but useful for calculations)
     path: List["Location"] = []
+
+    @staticmethod
+    def haversine(lon1, lat1, lon2, lat2):
+        """
+        Calculate the great circle distance between two points 
+        on the earth (specified in decimal degrees)
+        Returns distance in kilometers.
+        """
+        # convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+        # haversine formula 
+        dlon = lon2 - lon1 
+        dlat = lat2 - lat1 
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a)) 
+        r = 6371  # Radius of earth in kilometers.
+        return c * r
+
+    def is_within_km(self, location, km=1.0):
+        """
+        Checks if location (tuple: (lat, lon)) is within `km` of any point in the route.
+        """
+        for point in self.route_points:  # assuming route_points is a list of (lat, lon)
+            if self.haversine(location[1], location[0], point[1], point[0]) <= km:
+                return True
+        return False
+    
+    def calculate_added_cost(self, order):
+        """
+        Calculate the cost of adding this order to the route.
+        Can call deviation_time_for_stop, extra distance, etc.
+        """
+        pickup_time = self.deviation_time_for_stop(order.pickup_location)
+        dropoff_time = self.deviation_time_for_stop(order.dropoff_location)
+        # Add more calculations as needed (e.g., fuel, tolls)
+        total_time = pickup_time + dropoff_time
+        # Return a dict or a cost object
+        return {
+            "pickup_time": pickup_time,
+            "dropoff_time": dropoff_time,
+            "total_time": total_time,
+            # ... other computed costs ...
+        }
+    
+    def deviation_time_for_stop(self, location, avg_speed_kmh=30):
+        """
+        Returns deviation time in minutes for the stop at the given location.
+        """
+        if self.is_within_km(location, km=1.0):
+            # Deviation is only the stop time
+            return 15
+        else:
+            # Calculate detour (will not qualify, but for completeness)
+            min_dist = min(
+                self.haversine(location[1], location[0], point[1], point[0]) 
+                for point in self.route_points
+            )
+            # Time = distance / speed * 60 for minutes, + 15 min stop
+            return 15 + (min_dist / avg_speed_kmh) * 60
+        
+
     
     class Config:
         orm_mode = True
@@ -357,6 +419,9 @@ Package.update_forward_refs()
 Route.update_forward_refs()
 Truck.update_forward_refs()
 Location.update_forward_refs()
+
+# update forward refs is deprecated in pydantic v2
+# use model_rebuild() if upgrading to pydantic v2
 
 
 # ============= HELPER FUNCTIONS =============
