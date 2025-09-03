@@ -350,5 +350,331 @@ class TestRouteCalculationServiceIntegration:
         assert result.distance_km == 0.0
 
 
+class TestMultiWaypointRouteCalculation:
+    """Test cases for multi-waypoint route calculation functionality."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.service = RouteCalculationService()
+        
+        # Create test locations for multi-waypoint routes
+        self.atlanta = Mock()
+        self.atlanta.lat = 33.7490
+        self.atlanta.lng = -84.3880
+        self.atlanta.distance_to = Mock(return_value=120.5)
+        
+        self.macon = Mock()
+        self.macon.lat = 32.8407
+        self.macon.lng = -83.6324
+        self.macon.distance_to = Mock(return_value=85.2)
+        
+        self.savannah = Mock()
+        self.savannah.lat = 32.0835
+        self.savannah.lng = -81.0998
+        self.savannah.distance_to = Mock(return_value=160.8)
+        
+        self.ringgold = Mock()
+        self.ringgold.lat = 34.9161
+        self.ringgold.lng = -85.1077
+        self.ringgold.distance_to = Mock(return_value=120.5)
+        
+        # Mock distance_to method for all combinations
+        self._setup_distance_mocks()
+    
+    def _setup_distance_mocks(self):
+        """Set up distance mocks for all location pairs."""
+        # Atlanta distances
+        self.atlanta.distance_to = Mock(side_effect=lambda other: {
+            self.macon: 120.5,
+            self.savannah: 250.0,
+            self.ringgold: 180.0,
+            self.atlanta: 0.0
+        }.get(other, 100.0))
+        
+        # Macon distances
+        self.macon.distance_to = Mock(side_effect=lambda other: {
+            self.atlanta: 120.5,
+            self.savannah: 160.8,
+            self.ringgold: 200.0,
+            self.macon: 0.0
+        }.get(other, 100.0))
+        
+        # Savannah distances
+        self.savannah.distance_to = Mock(side_effect=lambda other: {
+            self.atlanta: 250.0,
+            self.macon: 160.8,
+            self.ringgold: 350.0,
+            self.savannah: 0.0
+        }.get(other, 100.0))
+        
+        # Ringgold distances
+        self.ringgold.distance_to = Mock(side_effect=lambda other: {
+            self.atlanta: 180.0,
+            self.macon: 200.0,
+            self.savannah: 350.0,
+            self.ringgold: 0.0
+        }.get(other, 100.0))
+    
+    def test_calculate_route_distance_two_waypoints(self):
+        """Test route calculation with two waypoints (simple case)."""
+        waypoints = [self.atlanta, self.macon]
+        
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert len(result.waypoint_distances) == 1
+        assert result.waypoint_distances[0] == 120.5
+        assert result.total_distance_km == 120.5
+        assert result.total_time_hours > 0
+        assert result.num_waypoints == 2
+        assert result.validate_consistency()
+    
+    def test_calculate_route_distance_three_waypoints(self):
+        """Test route calculation with three waypoints."""
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert len(result.waypoint_distances) == 2
+        assert result.waypoint_distances[0] == 120.5  # Atlanta -> Macon
+        assert result.waypoint_distances[1] == 160.8  # Macon -> Savannah
+        assert result.total_distance_km == 281.3  # 120.5 + 160.8
+        assert result.num_waypoints == 3
+        assert result.validate_consistency()
+        
+        # Check that stop time was added for intermediate waypoint (Macon)
+        expected_drive_time = (120.5 + 160.8) / 80.0  # distance / speed
+        expected_stop_time = 1 * 0.25  # 1 intermediate stop * 15 minutes
+        expected_total_time = expected_drive_time + expected_stop_time
+        assert abs(result.total_time_hours - expected_total_time) < 0.01
+    
+    def test_calculate_route_distance_four_waypoints(self):
+        """Test route calculation with four waypoints."""
+        waypoints = [self.atlanta, self.macon, self.savannah, self.ringgold]
+        
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert len(result.waypoint_distances) == 3
+        assert result.num_waypoints == 4
+        assert result.validate_consistency()
+        
+        # Check that stop time was added for 2 intermediate waypoints
+        expected_stop_time = 2 * 0.25  # 2 intermediate stops * 15 minutes
+        assert result.total_time_hours > expected_stop_time
+    
+    def test_calculate_route_distance_empty_waypoints(self):
+        """Test route calculation with empty waypoints list."""
+        result = self.service.calculate_route_distance([])
+        
+        assert not result.is_successful
+        assert "empty" in result.error.lower()
+    
+    def test_calculate_route_distance_single_waypoint(self):
+        """Test route calculation with single waypoint."""
+        result = self.service.calculate_route_distance([self.atlanta])
+        
+        assert not result.is_successful
+        assert "at least 2 locations" in result.error.lower()
+    
+    def test_calculate_route_distance_invalid_waypoint(self):
+        """Test route calculation with invalid waypoint."""
+        invalid_location = Mock()
+        invalid_location.lat = 91.0  # Invalid latitude
+        invalid_location.lng = -84.3880
+        
+        waypoints = [self.atlanta, invalid_location]
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert not result.is_successful
+        assert "latitude must be between" in result.error.lower()
+    
+    def test_calculate_route_distance_segment_calculation_failure(self):
+        """Test route calculation when a segment calculation fails."""
+        # Mock calculate_distance to fail for one segment
+        original_method = self.service.calculate_distance
+        
+        def mock_calculate_distance(loc1, loc2):
+            if loc1 == self.atlanta and loc2 == self.macon:
+                return DistanceResult(
+                    distance_km=0.0,
+                    calculation_method="error",
+                    error="Mock calculation failure"
+                )
+            return original_method(loc1, loc2)
+        
+        self.service.calculate_distance = mock_calculate_distance
+        
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert not result.is_successful
+        assert "segment 0 calculation failed" in result.error.lower()
+    
+    def test_optimize_waypoint_order_no_optimization_needed(self):
+        """Test waypoint optimization with only 2 waypoints."""
+        waypoints = [self.atlanta, self.macon]
+        optimized = self.service._optimize_waypoint_order(waypoints)
+        
+        assert optimized == waypoints
+    
+    def test_optimize_waypoint_order_three_waypoints(self):
+        """Test waypoint optimization with 3 waypoints."""
+        # Original order: Atlanta -> Savannah -> Macon
+        # Optimal order should be: Atlanta -> Macon -> Savannah
+        # (since Macon is closer to Atlanta than Savannah)
+        waypoints = [self.atlanta, self.savannah, self.macon]
+        optimized = self.service._optimize_waypoint_order(waypoints)
+        
+        assert len(optimized) == 3
+        assert optimized[0] == self.atlanta  # Start point unchanged
+        assert optimized[-1] == self.macon   # End point unchanged
+        assert optimized[1] == self.savannah # Intermediate point
+    
+    def test_optimize_waypoint_order_four_waypoints(self):
+        """Test waypoint optimization with 4 waypoints."""
+        waypoints = [self.atlanta, self.savannah, self.ringgold, self.macon]
+        optimized = self.service._optimize_waypoint_order(waypoints)
+        
+        assert len(optimized) == 4
+        assert optimized[0] == self.atlanta  # Start point unchanged
+        assert optimized[-1] == self.macon   # End point unchanged
+        # Intermediate points should be optimized
+        assert len(optimized[1:-1]) == 2
+    
+    def test_calculate_route_distance_with_optimization(self):
+        """Test route calculation with waypoint optimization enabled."""
+        waypoints = [self.atlanta, self.savannah, self.macon]
+        
+        result = self.service.calculate_route_distance(waypoints, optimize_order=True)
+        
+        assert result.is_successful
+        assert len(result.waypoint_distances) == 2
+        assert result.validate_consistency()
+    
+    def test_calculate_route_distance_with_validation_success(self):
+        """Test route calculation with validation for normal distances."""
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        
+        result = self.service.calculate_route_distance_with_validation(waypoints)
+        
+        assert result.is_successful
+        assert result.validate_consistency()
+    
+    def test_calculate_route_distance_with_validation_unreachable(self):
+        """Test route calculation with validation for unreachable segments."""
+        # Create a very distant location
+        distant_location = Mock()
+        distant_location.lat = 60.0  # Very far north
+        distant_location.lng = -120.0  # Very far west
+        distant_location.distance_to = Mock(return_value=5000.0)  # 5000 km away
+        
+        # Mock atlanta's distance_to method to return 5000 km to distant_location
+        self.atlanta.distance_to = Mock(side_effect=lambda other: {
+            distant_location: 5000.0,
+            self.macon: 120.5,
+            self.savannah: 250.0,
+            self.ringgold: 180.0,
+            self.atlanta: 0.0
+        }.get(other, 100.0))
+        
+        waypoints = [self.atlanta, distant_location]
+        
+        result = self.service.calculate_route_distance_with_validation(
+            waypoints, max_segment_distance_km=1000.0
+        )
+        
+        assert not result.is_successful
+        assert "unreachable segments" in result.error.lower()
+    
+    def test_route_result_properties(self):
+        """Test RouteResult properties and methods."""
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert result.num_waypoints == 3
+        assert result.get_longest_segment_km() >= result.get_shortest_segment_km()
+        assert result.get_average_speed_kmh() > 0
+        assert result.validate_consistency()
+    
+    def test_route_calculation_consistency(self):
+        """Test that route calculations are consistent across multiple calls."""
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        
+        result1 = self.service.calculate_route_distance(waypoints)
+        result2 = self.service.calculate_route_distance(waypoints)
+        
+        assert result1.is_successful
+        assert result2.is_successful
+        assert result1.total_distance_km == result2.total_distance_km
+        assert result1.total_time_hours == result2.total_time_hours
+        assert result1.waypoint_distances == result2.waypoint_distances
+    
+    def test_route_calculation_mixed_methods(self):
+        """Test route calculation when segments use different calculation methods."""
+        # Mock one segment to use OSMnx and another to use Haversine
+        original_method = self.service.calculate_distance
+        
+        def mock_calculate_distance(loc1, loc2):
+            if loc1 == self.atlanta and loc2 == self.macon:
+                return DistanceResult(
+                    distance_km=120.5,
+                    calculation_method="osmnx",
+                    drive_time_hours=1.5
+                )
+            else:
+                return DistanceResult(
+                    distance_km=160.8,
+                    calculation_method="haversine",
+                    drive_time_hours=2.0
+                )
+        
+        self.service.calculate_distance = mock_calculate_distance
+        
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert result.calculation_method == "mixed"
+        assert result.validate_consistency()
+    
+    def test_waypoint_optimization_error_handling(self):
+        """Test waypoint optimization with distance calculation errors."""
+        # Mock distance_to to raise exception
+        self.atlanta.distance_to = Mock(side_effect=Exception("Distance calculation error"))
+        
+        waypoints = [self.atlanta, self.macon, self.savannah]
+        optimized = self.service._optimize_waypoint_order(waypoints)
+        
+        # Should return original order on optimization failure
+        assert optimized == waypoints
+    
+    def test_complex_multi_stop_route(self):
+        """Test complex multi-stop route with many waypoints."""
+        # Create a 5-waypoint route
+        waypoint5 = Mock()
+        waypoint5.lat = 31.5804
+        waypoint5.lng = -84.1557
+        waypoint5.distance_to = Mock(return_value=95.0)
+        
+        waypoints = [self.atlanta, self.macon, self.savannah, self.ringgold, waypoint5]
+        
+        result = self.service.calculate_route_distance(waypoints)
+        
+        assert result.is_successful
+        assert len(result.waypoint_distances) == 4
+        assert result.num_waypoints == 5
+        assert result.validate_consistency()
+        
+        # Check that stop time was added for 3 intermediate waypoints
+        expected_stop_time = 3 * 0.25  # 3 intermediate stops * 15 minutes
+        assert result.total_time_hours > expected_stop_time
+        
+        # Verify all segments are positive distances
+        assert all(d > 0 for d in result.waypoint_distances)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
