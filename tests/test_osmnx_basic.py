@@ -5,14 +5,15 @@ Simple tool to compare road distance vs linear distance between two points
 and visualize the route on a map.
 """
 
-import tests.test_osmnx_basic as ox
+import osmnx as ox
 import networkx as nx
 import folium
 import math
 from typing import Tuple
 
-# Configure OSMnx
-ox.config(log_console=True, use_cache=True)
+# Configure OSMnx with new settings for logging and caching
+ox.settings.log_console = True
+ox.settings.use_cache = True
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -160,7 +161,7 @@ def create_route_map(lat1: float, lon1: float, lat2: float, lon2: float,
     m.save(filename)
     return filename
 
-def test_route(lat1: float, lon1: float, lat2: float, lon2: float):
+def _test_route(lat1: float, lon1: float, lat2: float, lon2: float):
     """
     Main function to test route between two points
     """
@@ -211,21 +212,21 @@ def main():
     
     # Example 1: Atlanta to Ringgold (from your freight data)
     print("\nExample 1: Atlanta to Ringgold, GA")
-    test_route(
+    _test_route(
         lat1=33.754413815792205, lon1=-84.3875298776525,  # Atlanta
         lat2=34.87433823445323, lon2=-85.084123334995166   # Ringgold
     )
     
-    # You can test other routes by calling test_route with different coordinates
+    # You can test other routes by calling _test_route with different coordinates
     # Example 2: Shorter route within Atlanta
     # print("\nExample 2: Short route within Atlanta")
-    # test_route(
+    # _test_route(
     #     lat1=33.7490, lon1=-84.3880,  # Downtown Atlanta
     #     lat2=33.7756, lon2=-84.3963   # Georgia Tech
     # )
 
 if __name__ == "__main__":
-    # For interactive use, you can also call test_route directly:
-    # test_route(lat1, lon1, lat2, lon2)
+    # For interactive use, you can also call _test_route directly:
+    # _test_route(lat1, lon1, lat2, lon2)
     
     main()
