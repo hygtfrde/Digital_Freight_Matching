@@ -12,7 +12,8 @@ from typing import Optional, List, Set
 from datetime import datetime
 from enum import Enum
 import math
-from math import radians, cos, sin, asin, sqrt
+from math import radians, cos, sin, asin, sqrt, atan2
+from utils.distance_utils import haversine
 
 
 # ============= ENUMS =============
@@ -36,15 +37,16 @@ class Location(BaseModel):
     class Config:
         orm_mode = True
     
+    # TODO: Move/refactor distance_to() into UTILS
     def distance_to(self, other: "Location") -> float:
         """Calculate distance to another location using Haversine formula"""
         R = 6371  # Earth radius in km
-        lat1, lng1 = math.radians(self.lat), math.radians(self.lng)
-        lat2, lng2 = math.radians(other.lat), math.radians(other.lng)
+        lat1, lng1 = radians(self.lat), radians(self.lng)
+        lat2, lng2 = radians(other.lat), radians(other.lng)
         dlat = lat2 - lat1
         dlng = lng2 - lng1
-        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlng / 2) ** 2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return R * c
     
     @property
@@ -176,66 +178,79 @@ class Route(BaseModel):
     # Additional path waypoints (not in DB but useful for calculations)
     path: List["Location"] = []
 
-    @staticmethod
-    def haversine(lon1, lat1, lon2, lat2):
-        """
-        Calculate the great circle distance between two points 
-        on the earth (specified in decimal degrees)
-        Returns distance in kilometers.
-        """
-        # convert decimal degrees to radians 
-        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-        # haversine formula 
-        dlon = lon2 - lon1 
-        dlat = lat2 - lat1 
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a)) 
-        r = 6371  # Radius of earth in kilometers.
-        return c * r
 
     def is_within_km(self, location, km=1.0):
         """
         Checks if location (tuple: (lat, lon)) is within `km` of any point in the route.
+        Uses self.path which contains Location objects.
         """
-        for point in self.route_points:  # assuming route_points is a list of (lat, lon)
-            if self.haversine(location[1], location[0], point[1], point[0]) <= km:
+        # Handle case where path is empty - check origin and destination
+        route_locations = self.path.copy()
+        if self.location_origin:
+            route_locations.append(self.location_origin)
+        if self.location_destiny:
+            route_locations.append(self.location_destiny)
+        
+        for point in route_locations:
+            if haversine(location[1], location[0], point.lng, point.lat) <= km:
                 return True
         return False
-    
+
     def calculate_added_cost(self, order):
         """
         Calculate the cost of adding this order to the route.
-        Can call deviation_time_for_stop, extra distance, etc.
+        Uses order.location_origin and order.location_destiny.
         """
-        pickup_time = self.deviation_time_for_stop(order.pickup_location)
-        dropoff_time = self.deviation_time_for_stop(order.dropoff_location)
-        # Add more calculations as needed (e.g., fuel, tolls)
+        if not order.location_origin or not order.location_destiny:
+            return {
+                "pickup_time": 0,
+                "dropoff_time": 0,
+                "total_time": 0,
+                "error": "Order missing origin or destination location"
+            }
+        
+        # Convert Location objects to coordinate tuples
+        pickup_coords = (order.location_origin.lat, order.location_origin.lng)
+        dropoff_coords = (order.location_destiny.lat, order.location_destiny.lng)
+        
+        pickup_time = self.deviation_time_for_stop(pickup_coords)
+        dropoff_time = self.deviation_time_for_stop(dropoff_coords)
+        
         total_time = pickup_time + dropoff_time
-        # Return a dict or a cost object
+        
         return {
             "pickup_time": pickup_time,
             "dropoff_time": dropoff_time,
             "total_time": total_time,
-            # ... other computed costs ...
         }
-    
+
     def deviation_time_for_stop(self, location, avg_speed_kmh=30):
         """
         Returns deviation time in minutes for the stop at the given location.
+        location should be a tuple (lat, lng)
+        Uses self.path which contains Location objects.
         """
         if self.is_within_km(location, km=1.0):
             # Deviation is only the stop time
             return 15
         else:
-            # Calculate detour (will not qualify, but for completeness)
+            # Calculate detour - find minimum distance to any point on route
+            route_locations = self.path.copy()
+            if self.location_origin:
+                route_locations.append(self.location_origin)
+            if self.location_destiny:
+                route_locations.append(self.location_destiny)
+            
+            if not route_locations:
+                # No route points available, return just stop time
+                return 15
+            
             min_dist = min(
-                self.haversine(location[1], location[0], point[1], point[0]) 
-                for point in self.route_points
+                haversine(location[1], location[0], point.lng, point.lat) 
+                for point in route_locations
             )
             # Time = distance / speed * 60 for minutes, + 15 min stop
             return 15 + (min_dist / avg_speed_kmh) * 60
-        
-
     
     class Config:
         orm_mode = True
