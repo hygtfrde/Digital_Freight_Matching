@@ -146,6 +146,10 @@ class TestNetworkCache:
         removed_count = self.cache.clear_expired_cache()
         assert removed_count == 0
         
+        # Manually set cache time to be older than the custom age
+        cache_key1 = self.cache._bbox_to_key(self.bbox1)
+        self.cache.cache_times[cache_key1] = datetime.now() - timedelta(hours=0.002)
+        
         # But should be expired with very short custom age
         removed_count = self.cache.clear_expired_cache(max_age_hours=0.001)
         assert removed_count == 1
