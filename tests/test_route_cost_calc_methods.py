@@ -1,6 +1,12 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 import math
 from schemas.schemas import Route, Location, Order
+from utils.distance_utils import haversine
+
 
 class TestRouteMethods:
     """Unit tests for Route class methods"""
@@ -33,7 +39,7 @@ class TestRouteMethods:
     def test_haversine_distance_calculation(self):
         """Test the haversine distance calculation"""
         # Distance between NYC and LA should be approximately 3944 km
-        distance = Route.haversine(
+        distance = haversine(
             self.origin.lng, self.origin.lat,
             self.destination.lng, self.destination.lat
         )
