@@ -1,15 +1,11 @@
-```python
-========== DIGITAL FREIGHT MATCHING SYSTEM ==========
+========== DIGITAL FREIGHT MATCHING SYSTEM (MODERNIZED) ==========
 
-Business logic module using unified schemas from schemas.py
-Maintains all original matching and pricing logic
-
-User Input → Validation → Business Logic (DFM) → Database → Feedback
-     ↑                                                        │
-     └────────────────────────────────────────────────────────┘
+User Input → Validation (BusinessValidator) → Order Processing (OrderProcessor) → Database → Feedback
+     ↑                                                              │
+     └──────────────────────────────────────────────────────────────┘
 
 +---------+     +---------+     +--------+     +-----------+
-|  Client |-----| C_Order |-----| Cargo  |-----| Package   |
+|  Client |-----| Order   |-----| Cargo  |-----| Package   |
 +---------+     +---------+     +--------+     +-----------+
       |             |             |               |
       |             |             |               |
@@ -31,12 +27,27 @@ User Input → Validation → Business Logic (DFM) → Database → Feedback
 |  Truck  |-----| Route |-----| T_Order  |     | Location  |
 +---------+     +-------+     +----------+     +-----------+
 
-+-------------------+
-|  PricingService   |
-+-------------------+
-| - routes          |
-| - trucks          |
-| - pending_orders  |
-+-------------------+
++--------------------------+
+| Validation / Business    |
+| Validator                |
++--------------------------+
+| - business rules         |
+| - audits & compliance    |
++--------------------------+
 
-```
++--------------------------+
+| OrderProcessor           |
++--------------------------+
+| - order validation       |
+| - matching/assignment    |
+| - capacity, proximity    |
+| - time, compatibility    |
++--------------------------+
+
+# (Optional future module)
+# +--------------------------+
+# | RouteOptimizer           |
+# +--------------------------+
+# | - profitability logic    |
+# | - batching/optimization  |
+# +--------------------------+
