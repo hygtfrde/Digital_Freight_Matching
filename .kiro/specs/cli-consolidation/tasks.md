@@ -16,7 +16,6 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4_
 
 - [ ] 3. Create route optimization module
-  - Create `route_optimizer.py` extending existing `PricingService` logic
   - Implement profitability calculation using cost-per-mile data
   - Add route creation from pending orders with profitability validation
   - Implement route sequence optimization for minimal deviation

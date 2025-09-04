@@ -15,8 +15,15 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
 from database import engine
 from db_manager import DatabaseManager, SystemStatus
-from dfm import PricingService, CriteriaMatcher
 
+# TODO: DFM is deprecated, remove and use
+# - validation/business_validator.py
+# - order_processor.py
+
+# from dfm import PricingService, CriteriaMatcher
+
+# BUG: removing the above will break the current code
+# - remove dfm.py usage, and refactor to use new imports
 
 class Colors:
     """ANSI color codes for terminal output"""

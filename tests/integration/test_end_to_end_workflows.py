@@ -13,6 +13,8 @@ from sqlmodel import Session, select
 from tests.integration.test_integration_suite import IntegrationTestSuite
 from app.database import Order, Route, Truck, Location, Cargo, Package, CargoType
 from order_processor import OrderProcessor, ValidationResult
+
+
 from dfm import PricingService
 
 
