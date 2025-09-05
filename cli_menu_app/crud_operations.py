@@ -325,7 +325,7 @@ class CRUDOperations:
                 ("3", "➕", f"Create New {config['name']}"),
                 ("4", "✏️", f"Update {config['name']}"),
                 ("5", "🗑️", f"Delete {config['name']}"),
-                ("6", "↩️", "Back to Entity Management")
+                ("0", "↩️", "Back to Entity Management")
             ]
             
             from ui_components import print_menu_box
@@ -348,7 +348,7 @@ class CRUDOperations:
             elif choice == "5":
                 self.delete_entity(entity_type)
                 pause()
-            elif choice == "6":
+            elif choice == "0":
                 return True
             else:
                 print_error("Invalid choice. Please try again.")

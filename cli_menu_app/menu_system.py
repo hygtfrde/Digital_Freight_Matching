@@ -34,7 +34,7 @@ class MenuSystem:
             ("3", "📊", "System Status & Reports"),
             ("4", "⚙️", "System Operations"),
             ("5", "🔍", "Quick Database Check"),
-            ("6", "❌", "Exit")
+            ("0", "❌", "Exit")
         ]
         
         print_menu_box("MAIN MENU", options)
@@ -51,7 +51,7 @@ class MenuSystem:
             ("5", "👥", "Clients"),
             ("6", "📦", "Packages"),
             ("7", "🚚", "Cargo"),
-            ("8", "↩️", "Back to Main Menu")
+            ("0", "↩️", "Back to Main Menu")
         ]
         
         print_menu_box("ENTITY MANAGEMENT", options)
@@ -65,7 +65,7 @@ class MenuSystem:
             ("2", "🔧", "Database Operations"),
             ("3", "📋", "List All Tables"),
             ("4", "🔍", "Search Database"),
-            ("5", "↩️", "Back to Main Menu")
+            ("0", "↩️", "Back to Main Menu")
         ]
         
         print_menu_box("DATABASE MANAGEMENT", options)
@@ -125,7 +125,7 @@ class MenuSystem:
             ("2", "⚡", "Performance Test"),
             ("3", "🧹", "Cleanup Operations"),
             ("4", "📊", "Generate Reports"),
-            ("5", "↩️", "Back to Main Menu")
+            ("0", "↩️", "Back to Main Menu")
         ]
         
         print_menu_box("SYSTEM OPERATIONS", options)
@@ -195,7 +195,7 @@ class MenuSystem:
             pause()
             self.menu_stack.pop()
             return True
-        elif choice == "6":
+        elif choice == "0":
             print("\n" + Colors.WARNING + "Goodbye!" + Colors.ENDC)
             return False
         else:
@@ -222,7 +222,7 @@ class MenuSystem:
             self.crud_ops.entity_menu(entity_type)
             self.menu_stack.pop()
             return True
-        elif choice == "8":
+        elif choice == "0":
             self.menu_stack.pop()
             self.current_menu = "main"
             return True
@@ -249,7 +249,7 @@ class MenuSystem:
             print_info("Database search - Not yet implemented")
             pause()
             return True
-        elif choice == "5":
+        elif choice == "0":
             self.menu_stack.pop()
             self.current_menu = "main"
             return True
@@ -281,7 +281,7 @@ class MenuSystem:
             print_info("Report generation - Not yet implemented")
             pause()
             return True
-        elif choice == "5":
+        elif choice == "0":
             self.menu_stack.pop()
             self.current_menu = "main"
             return True

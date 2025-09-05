@@ -51,18 +51,19 @@ def print_header(data_service, menu_stack):
 
 
 def print_menu_box(title: str, options: List[tuple]):
-    """Print a formatted menu box"""
+    """Print a formatted menu with title box and simple options below"""
     width = 65
+    
+    # Print title box
     print("┌" + "─" * (width - 2) + "┐")
     print("│" + title.center(width - 2) + "│")
-    print("├" + "─" * (width - 2) + "┤")
-    
-    for key, icon, label in options:
-        line = f"  {key}. {icon} {label}"
-        padding = width - len(line) - 1
-        print("│" + line + " " * padding + "│")
-    
     print("└" + "─" * (width - 2) + "┘")
+    print()
+    
+    # Print options without borders
+    for key, icon, label in options:
+        print(f"  {key}. {icon} {label}")
+    print()
 
 
 def get_input(prompt: str = "Enter choice: ") -> str:
