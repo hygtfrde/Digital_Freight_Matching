@@ -6,15 +6,12 @@ Integrates with db_manager.py for database operations
 
 import os
 import sys
+import argparse
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from sqlmodel import Session
 
-# Add app directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
-
-from database import engine
-from db_manager import DatabaseManager, SystemStatus
+# Import the new hybrid data service
+from data_service import create_data_service, DataService, parse_cli_args
 
 
 class Colors:
@@ -32,10 +29,18 @@ class Colors:
 class CLIDashboard:
     """Main CLI Dashboard for Digital Freight Matching System"""
     
-    def __init__(self):
+    def __init__(self, data_service: DataService):
         self.running = True
         self.current_menu = "main"
         self.menu_stack = ["Main"]
+        self.data_service = data_service
+        
+        # Show initial connection info
+        health = self.data_service.health_check()
+        if health["status"] == "healthy":
+            print(f"{Colors.GREEN}✅ Connected in {self.data_service.mode} mode{Colors.ENDC}")
+        else:
+            print(f"{Colors.FAIL}❌ Connection issue: {health['message']}{Colors.ENDC}")
         
     def clear_screen(self):
         """Clear terminal screen"""
@@ -100,6 +105,8 @@ class CLIDashboard:
                 self.main_menu()
             elif self.current_menu == "database":
                 self.database_menu()
+            elif self.current_menu == "entities":
+                self.entities_menu()
             elif self.current_menu == "system":
                 self.system_menu()
             elif self.current_menu == "reports":
@@ -114,10 +121,11 @@ class CLIDashboard:
         
         options = [
             ("1", "🗄️", "Database Management"),
-            ("2", "📊", "System Status & Reports"),
-            ("3", "⚙️", "System Operations"),
-            ("4", "🔍", "Quick Database Check"),
-            ("5", "❌", "Exit"),
+            ("2", "🏢", "Entity Management"),
+            ("3", "📊", "System Status & Reports"),
+            ("4", "⚙️", "System Operations"),
+            ("5", "🔍", "Quick Database Check"),
+            ("6", "❌", "Exit"),
         ]
         
         self.print_menu_box("MAIN MENU", options)
@@ -127,12 +135,14 @@ class CLIDashboard:
         if choice == "1":
             self.current_menu = "database"
         elif choice == "2":
-            self.current_menu = "reports"
+            self.current_menu = "entities"
         elif choice == "3":
-            self.current_menu = "system"
+            self.current_menu = "reports"
         elif choice == "4":
-            self.quick_database_check()
+            self.current_menu = "system"
         elif choice == "5":
+            self.quick_database_check()
+        elif choice == "6":
             self.exit_program()
         else:
             self.error_message("Invalid choice. Please try again.")
@@ -169,6 +179,46 @@ class CLIDashboard:
             self.reset_database()
         elif choice == "6":
             self.run_database_tests()
+        elif choice == "0":
+            self.current_menu = "main"
+        else:
+            self.error_message("Invalid choice")
+            self.pause()
+    
+    def entities_menu(self):
+        """Entity management menu"""
+        self.menu_stack = ["Main", "Entity Management"]
+        self.print_header()
+        
+        options = [
+            ("1", "🚛", "Truck Management"),
+            ("2", "📦", "Order Management"),
+            ("3", "🗺️", "Route Management"),
+            ("4", "📍", "Location Management"),
+            ("5", "👥", "Client Management"),
+            ("6", "📋", "Package Management"),
+            ("7", "🚚", "Cargo Management"),
+            ("0", "🔙", "Back to Main Menu"),
+        ]
+        
+        self.print_menu_box("ENTITY MANAGEMENT", options)
+        
+        choice = self.get_input()
+        
+        if choice == "1":
+            self.truck_management()
+        elif choice == "2":
+            self.order_management()
+        elif choice == "3":
+            self.route_management()
+        elif choice == "4":
+            self.location_management()
+        elif choice == "5":
+            self.client_management()
+        elif choice == "6":
+            self.package_management()
+        elif choice == "7":
+            self.cargo_management()
         elif choice == "0":
             self.current_menu = "main"
         else:
@@ -258,9 +308,11 @@ class CLIDashboard:
         print("-" * 65)
         
         try:
-            with Session(engine) as session:
-                db_manager = DatabaseManager(session)
-                success = db_manager.initialize_database()
+            if self.data_service.mode == "api":
+                self.warning_message("Database initialization not available in API mode")
+                self.warning_message("Please initialize database directly on the server")
+            else:
+                success = self.data_service.initialize_database()
                 
                 if success:
                     self.success_message("Database initialized successfully!")
@@ -331,10 +383,13 @@ class CLIDashboard:
         print("=" * 65)
         
         try:
-            with Session(engine) as session:
-                db_manager = DatabaseManager(session)
-                status = db_manager.get_system_status()
-                
+            status = self.data_service.get_system_status()
+            
+            if self.data_service.mode == "api":
+                # Status is a dict in API mode
+                self._display_api_system_status(status)
+            else:
+                # Status is a SystemStatus object in direct mode
                 self._display_system_status(status)
                 
         except Exception as e:
@@ -770,8 +825,8 @@ class CLIDashboard:
         
         self.pause()
     
-    def _display_system_status(self, status: SystemStatus):
-        """Helper to display system status"""
+    def _display_system_status(self, status):
+        """Helper to display system status from direct DB mode"""
         print(f"\n📊 System Overview")
         print("-" * 30)
         print(f"Total Routes: {status.total_routes}")
@@ -791,6 +846,311 @@ class CLIDashboard:
         
         print(f"\n⏰ Last Updated: {status.last_updated}")
     
+    def _display_api_system_status(self, status: Dict):
+        """Helper to display system status from API mode"""
+        print(f"\n📊 System Overview (via API)")
+        print("-" * 30)
+        
+        print(f"\n🗄️ Database Entities")
+        print("-" * 30)
+        print(f"Clients: {status.get('clients', 0)}")
+        print(f"Locations: {status.get('locations', 0)}")
+        print(f"Trucks: {status.get('trucks', 0)}")
+        print(f"Routes: {status.get('routes', 0)}")
+        print(f"Orders: {status.get('orders', 0)}")
+        print(f"Cargo Loads: {status.get('cargo_loads', 0)}")
+        print(f"Packages: {status.get('packages', 0)}")
+        
+        print(f"\n🔗 Data Access Mode: API")
+        print(f"📍 API Endpoint: {self.data_service.config.api_url}")
+        print(f"⏰ Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Entity Management Functions
+    
+    def truck_management(self):
+        """Truck management sub-menu"""
+        self.menu_stack = ["Main", "Entity Management", "Trucks"]
+        self.print_header()
+        
+        options = [
+            ("1", "📋", "List All Trucks"),
+            ("2", "👀", "View Truck Details"),
+            ("3", "➕", "Create New Truck"),
+            ("4", "✏️", "Edit Truck"),
+            ("5", "❌", "Delete Truck"),
+            ("0", "🔙", "Back to Entity Management"),
+        ]
+        
+        self.print_menu_box("TRUCK MANAGEMENT", options)
+        
+        choice = self.get_input()
+        
+        if choice == "1":
+            self.list_trucks()
+        elif choice == "2":
+            self.view_truck_details()
+        elif choice == "3":
+            self.create_truck()
+        elif choice == "4":
+            self.edit_truck()
+        elif choice == "5":
+            self.delete_truck()
+        elif choice == "0":
+            self.current_menu = "entities"
+        else:
+            self.error_message("Invalid choice")
+            self.pause()
+    
+    def list_trucks(self):
+        """List all trucks"""
+        self.print_header()
+        print(Colors.BOLD + "📋 TRUCK LIST" + Colors.ENDC)
+        print("-" * 65)
+        
+        try:
+            trucks = self.data_service.get_all('trucks')
+            
+            if not trucks:
+                self.warning_message("No trucks found in the system")
+            else:
+                print(f"\n📊 Found {len(trucks)} truck(s):")
+                print("-" * 50)
+                print(f"{'ID':<5} {'Type':<15} {'Capacity':<12} {'Autonomy':<10}")
+                print("-" * 50)
+                
+                for truck in trucks:
+                    truck_id = truck.get('id', 'N/A')
+                    truck_type = truck.get('type', 'Unknown')[:14]
+                    capacity = truck.get('capacity', 0)
+                    autonomy = truck.get('autonomy', 0)
+                    print(f"{truck_id:<5} {truck_type:<15} {capacity:<12.1f} {autonomy:<10.0f}")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve trucks: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def view_truck_details(self):
+        """View detailed truck information"""
+        self.print_header()
+        print(Colors.BOLD + "👀 TRUCK DETAILS" + Colors.ENDC)
+        print("-" * 65)
+        
+        truck_id = self.get_input("Enter truck ID: ")
+        
+        if not truck_id.isdigit():
+            self.error_message("Invalid truck ID")
+            self.pause()
+            return
+        
+        try:
+            truck = self.data_service.api_client.get_by_id('trucks', int(truck_id)) if self.data_service.mode == 'api' else None
+            
+            if not truck:
+                self.error_message(f"Truck with ID {truck_id} not found")
+            else:
+                print(f"\n🚛 Truck Details:")
+                print("-" * 30)
+                print(f"ID: {truck.get('id')}")
+                print(f"Type: {truck.get('type')}")
+                print(f"Capacity: {truck.get('capacity')} m³")
+                print(f"Autonomy: {truck.get('autonomy')} km")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve truck details: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def create_truck(self):
+        """Create a new truck"""
+        self.print_header()
+        print(Colors.BOLD + "➕ CREATE NEW TRUCK" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database truck creation not yet implemented")
+            self.pause()
+            return
+        
+        try:
+            print("Enter truck details:")
+            truck_type = self.get_input("Truck Type: ")
+            capacity = self.get_input("Capacity (m³): ")
+            autonomy = self.get_input("Autonomy (km): ")
+            
+            if not capacity or not autonomy:
+                self.error_message("Capacity and autonomy are required")
+                self.pause()
+                return
+            
+            truck_data = {
+                "type": truck_type,
+                "capacity": float(capacity),
+                "autonomy": float(autonomy)
+            }
+            
+            new_truck = self.data_service.api_client.create('trucks', truck_data)
+            self.success_message(f"Truck created successfully with ID: {new_truck.get('id')}")
+            
+        except ValueError:
+            self.error_message("Invalid numeric values for capacity or autonomy")
+        except Exception as e:
+            self.error_message(f"Failed to create truck: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def edit_truck(self):
+        """Edit an existing truck"""
+        self.print_header()
+        print(Colors.BOLD + "✏️ EDIT TRUCK" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database truck editing not yet implemented")
+            self.pause()
+            return
+        
+        truck_id = self.get_input("Enter truck ID to edit: ")
+        
+        if not truck_id.isdigit():
+            self.error_message("Invalid truck ID")
+            self.pause()
+            return
+        
+        try:
+            # Get current truck details
+            truck = self.data_service.api_client.get_by_id('trucks', int(truck_id))
+            
+            print(f"\nCurrent truck details:")
+            print(f"Type: {truck.get('type')}")
+            print(f"Capacity: {truck.get('capacity')} m³")
+            print(f"Autonomy: {truck.get('autonomy')} km")
+            
+            print(f"\nEnter new values (press Enter to keep current):")
+            new_type = self.get_input(f"Truck Type [{truck.get('type')}]: ")
+            new_capacity = self.get_input(f"Capacity [{truck.get('capacity')}]: ")
+            new_autonomy = self.get_input(f"Autonomy [{truck.get('autonomy')}]: ")
+            
+            update_data = {}
+            if new_type:
+                update_data['type'] = new_type
+            if new_capacity:
+                update_data['capacity'] = float(new_capacity)
+            if new_autonomy:
+                update_data['autonomy'] = float(new_autonomy)
+            
+            if update_data:
+                updated_truck = self.data_service.api_client.update('trucks', int(truck_id), update_data)
+                self.success_message("Truck updated successfully")
+            else:
+                self.warning_message("No changes made")
+                
+        except Exception as e:
+            self.error_message(f"Failed to edit truck: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def delete_truck(self):
+        """Delete a truck"""
+        self.print_header()
+        print(Colors.BOLD + "❌ DELETE TRUCK" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database truck deletion not yet implemented")
+            self.pause()
+            return
+        
+        truck_id = self.get_input("Enter truck ID to delete: ")
+        
+        if not truck_id.isdigit():
+            self.error_message("Invalid truck ID")
+            self.pause()
+            return
+        
+        try:
+            # Get truck details for confirmation
+            truck = self.data_service.api_client.get_by_id('trucks', int(truck_id))
+            
+            print(f"\nTruck to delete:")
+            print(f"ID: {truck.get('id')}")
+            print(f"Type: {truck.get('type')}")
+            print(f"Capacity: {truck.get('capacity')} m³")
+            
+            self.warning_message("This action cannot be undone!")
+            confirm = self.get_input("Type 'DELETE' to confirm: ")
+            
+            if confirm == 'DELETE':
+                result = self.data_service.api_client.delete('trucks', int(truck_id))
+                self.success_message("Truck deleted successfully")
+            else:
+                self.warning_message("Deletion cancelled")
+                
+        except Exception as e:
+            self.error_message(f"Failed to delete truck: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    # Placeholder functions for other entity types
+    def order_management(self):
+        """Order management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "📦 ORDER MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Order management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
+    def route_management(self):
+        """Route management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "🗺️ ROUTE MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Route management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
+    def location_management(self):
+        """Location management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "📍 LOCATION MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Location management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
+    def client_management(self):
+        """Client management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "👥 CLIENT MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Client management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
+    def package_management(self):
+        """Package management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "📋 PACKAGE MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Package management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
+    def cargo_management(self):
+        """Cargo management placeholder"""
+        self.print_header()
+        print(Colors.BOLD + "🚚 CARGO MANAGEMENT" + Colors.ENDC)
+        print("-" * 65)
+        self.warning_message("Cargo management coming soon...")
+        self.pause()
+        self.current_menu = "entities"
+    
     def exit_program(self):
         """Exit the program"""
         self.print_header()
@@ -801,8 +1161,48 @@ class CLIDashboard:
 
 def main():
     """Main entry point"""
-    dashboard = CLIDashboard()
-    dashboard.run()
+    # Parse CLI arguments for data service configuration
+    cli_args = {}
+    try:
+        # Simple argument parsing for backward compatibility
+        import sys
+        args = sys.argv[1:]
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg.startswith('--mode='):
+                cli_args['mode'] = arg.split('=', 1)[1]
+                i += 1
+            elif arg == '--mode' and i + 1 < len(args):
+                cli_args['mode'] = args[i + 1]
+                i += 2
+            elif arg.startswith('--api-url='):
+                cli_args['api_url'] = arg.split('=', 1)[1]
+                i += 1
+            elif arg == '--api-url' and i + 1 < len(args):
+                cli_args['api_url'] = args[i + 1]
+                i += 2
+            elif arg.startswith('--environment='):
+                cli_args['environment'] = arg.split('=', 1)[1]
+                i += 1
+            elif arg == '--environment' and i + 1 < len(args):
+                cli_args['environment'] = args[i + 1]
+                i += 2
+            else:
+                i += 1
+    except Exception as e:
+        print(f"Warning: Error parsing arguments: {e}")
+        cli_args = {}
+    
+    # Create data service with configuration
+    try:
+        data_service = create_data_service(cli_args)
+        dashboard = CLIDashboard(data_service)
+        dashboard.run()
+    except Exception as e:
+        print(f"{Colors.FAIL}❌ Failed to initialize dashboard: {e}{Colors.ENDC}")
+        print(f"Try running with --mode=direct or ensure API server is running for --mode=api")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

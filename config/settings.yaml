@@ -1,0 +1,31 @@
+# Digital Freight Matching System Configuration
+
+# Data Access Configuration
+data_access:
+  # Mode: "direct" for direct database access, "api" for API mode
+  mode: "direct"
+  
+  # API Configuration (used when mode = "api")
+  api_url: "http://localhost:8000"
+  api_timeout: 30
+  
+  # Direct Database Configuration (used when mode = "direct")
+  database_path: "logistics.db"
+  
+# Environment-specific overrides
+development:
+  data_access:
+    mode: "direct"
+    database_path: "logistics.db"
+
+production:
+  data_access:
+    mode: "api"
+    api_url: "http://api.freight.company.com"
+    api_timeout: 60
+
+# CLI Dashboard Settings
+dashboard:
+  default_environment: "development"
+  show_performance_metrics: true
+  auto_refresh_interval: 30  # seconds
