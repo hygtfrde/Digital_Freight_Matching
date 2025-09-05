@@ -347,5 +347,11 @@ def get_route_analytics(session: Session = Depends(get_session)):
     
     return result
 
+# Health endpoint
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "message": "API is running"}
+
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000)
