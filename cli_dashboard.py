@@ -52,6 +52,19 @@ class CLIDashboard:
         print(Colors.CYAN + "=" * 65 + Colors.ENDC)
         print(Colors.BOLD + "🚛 DIGITAL FREIGHT MATCHING SYSTEM".center(65) + Colors.ENDC)
         print(Colors.CYAN + "=" * 65 + Colors.ENDC)
+        
+        # Display data mode with color coding
+        mode = self.data_service.mode.upper()
+        if mode == "API":
+            mode_color = Colors.BLUE
+            mode_icon = "🌐"
+            mode_detail = f" ({self.data_service.config.api_url})"
+        else:
+            mode_color = Colors.GREEN
+            mode_icon = "💾"
+            mode_detail = f" ({self.data_service.config.database_path})"
+        
+        print(f"🔗 Data Mode: {mode_color}{mode_icon} {mode}{mode_detail}{Colors.ENDC}")
         print(f"📍 Location: {' > '.join(self.menu_stack)}")
         print(f"⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("-" * 65)
@@ -1096,15 +1109,257 @@ class CLIDashboard:
         self.pause()
         self.current_menu = "entities"
     
-    # Placeholder functions for other entity types
-    def order_management(self):
-        """Order management placeholder"""
+    # Order Management Functions
+    def list_orders(self):
+        """List all orders"""
         self.print_header()
-        print(Colors.BOLD + "📦 ORDER MANAGEMENT" + Colors.ENDC)
+        print(Colors.BOLD + "📋 ORDER LIST" + Colors.ENDC)
         print("-" * 65)
-        self.warning_message("Order management coming soon...")
+        
+        try:
+            orders = self.data_service.get_all('orders')
+            
+            if not orders:
+                self.warning_message("No orders found in the system")
+            else:
+                print(f"\n📊 Found {len(orders)} order(s):")
+                print("-" * 60)
+                print(f"{'ID':<5} {'Origin ID':<10} {'Dest ID':<9} {'Client ID':<10} {'Contract':<15}")
+                print("-" * 60)
+                
+                for order in orders:
+                    order_id = order.get('id', 'N/A')
+                    origin_id = order.get('location_origin_id', 'N/A')
+                    dest_id = order.get('location_destiny_id', 'N/A')
+                    client_id = order.get('client_id', 'N/A')
+                    contract = (order.get('contract_type', 'None') or 'None')[:14]
+                    print(f"{order_id:<5} {origin_id:<10} {dest_id:<9} {client_id:<10} {contract:<15}")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve orders: {e}")
+        
         self.pause()
         self.current_menu = "entities"
+    
+    def view_order_details(self):
+        """View detailed order information"""
+        self.print_header()
+        print(Colors.BOLD + "👀 ORDER DETAILS" + Colors.ENDC)
+        print("-" * 65)
+        
+        order_id = self.get_input("Enter order ID: ")
+        
+        if not order_id.isdigit():
+            self.error_message("Invalid order ID")
+            self.pause()
+            return
+        
+        try:
+            if self.data_service.mode == 'api':
+                order = self.data_service.api_client.get_by_id('orders', int(order_id))
+            else:
+                self.warning_message("Direct database order details not yet implemented")
+                self.pause()
+                return
+            
+            if not order:
+                self.error_message(f"Order with ID {order_id} not found")
+            else:
+                print(f"\n📦 Order Details:")
+                print("-" * 30)
+                print(f"ID: {order.get('id')}")
+                print(f"Origin Location ID: {order.get('location_origin_id')}")
+                print(f"Destination Location ID: {order.get('location_destiny_id')}")
+                print(f"Client ID: {order.get('client_id')}")
+                print(f"Route ID: {order.get('route_id')}")
+                print(f"Contract Type: {order.get('contract_type', 'None')}")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve order details: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def create_order(self):
+        """Create a new order"""
+        self.print_header()
+        print(Colors.BOLD + "➕ CREATE NEW ORDER" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database order creation not yet implemented")
+            self.pause()
+            return
+        
+        try:
+            print("Enter order details:")
+            origin_id = self.get_input("Origin Location ID: ")
+            dest_id = self.get_input("Destination Location ID: ")
+            client_id = self.get_input("Client ID (optional): ")
+            contract_type = self.get_input("Contract Type (optional): ")
+            
+            if not origin_id or not dest_id:
+                self.error_message("Origin and destination location IDs are required")
+                self.pause()
+                return
+            
+            order_data = {
+                "location_origin_id": int(origin_id),
+                "location_destiny_id": int(dest_id)
+            }
+            
+            if client_id:
+                order_data["client_id"] = int(client_id)
+            if contract_type:
+                order_data["contract_type"] = contract_type
+            
+            new_order = self.data_service.api_client.create('orders', order_data)
+            self.success_message(f"Order created successfully with ID: {new_order.get('id')}")
+            
+        except ValueError:
+            self.error_message("Invalid numeric values for location or client IDs")
+        except Exception as e:
+            self.error_message(f"Failed to create order: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def edit_order(self):
+        """Edit an existing order"""
+        self.print_header()
+        print(Colors.BOLD + "✏️ EDIT ORDER" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database order editing not yet implemented")
+            self.pause()
+            return
+        
+        order_id = self.get_input("Enter order ID to edit: ")
+        
+        if not order_id.isdigit():
+            self.error_message("Invalid order ID")
+            self.pause()
+            return
+        
+        try:
+            # Get current order details
+            order = self.data_service.api_client.get_by_id('orders', int(order_id))
+            
+            print(f"\nCurrent order details:")
+            print(f"Origin Location ID: {order.get('location_origin_id')}")
+            print(f"Destination Location ID: {order.get('location_destiny_id')}")
+            print(f"Client ID: {order.get('client_id')}")
+            print(f"Contract Type: {order.get('contract_type')}")
+            
+            print(f"\nEnter new values (press Enter to keep current):")
+            new_origin = self.get_input(f"Origin Location ID [{order.get('location_origin_id')}]: ")
+            new_dest = self.get_input(f"Destination Location ID [{order.get('location_destiny_id')}]: ")
+            new_client = self.get_input(f"Client ID [{order.get('client_id')}]: ")
+            new_contract = self.get_input(f"Contract Type [{order.get('contract_type')}]: ")
+            
+            update_data = {}
+            if new_origin:
+                update_data['location_origin_id'] = int(new_origin)
+            if new_dest:
+                update_data['location_destiny_id'] = int(new_dest)
+            if new_client:
+                update_data['client_id'] = int(new_client)
+            if new_contract:
+                update_data['contract_type'] = new_contract
+            
+            if update_data:
+                confirm = self.get_input("Save changes? (y/n): ")
+                if confirm.lower() == 'y':
+                    updated_order = self.data_service.api_client.update('orders', int(order_id), update_data)
+                    self.success_message("Order updated successfully")
+                else:
+                    self.warning_message("Changes cancelled")
+            else:
+                self.warning_message("No changes made")
+                
+        except Exception as e:
+            self.error_message(f"Failed to edit order: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def delete_order(self):
+        """Delete an order"""
+        self.print_header()
+        print(Colors.BOLD + "❌ DELETE ORDER" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database order deletion not yet implemented")
+            self.pause()
+            return
+        
+        order_id = self.get_input("Enter order ID to delete: ")
+        
+        if not order_id.isdigit():
+            self.error_message("Invalid order ID")
+            self.pause()
+            return
+        
+        try:
+            # Get order details for confirmation
+            order = self.data_service.api_client.get_by_id('orders', int(order_id))
+            
+            print(f"\nOrder to delete:")
+            print(f"ID: {order.get('id')}")
+            print(f"Origin Location ID: {order.get('location_origin_id')}")
+            print(f"Destination Location ID: {order.get('location_destiny_id')}")
+            print(f"Client ID: {order.get('client_id')}")
+            
+            self.warning_message("This action cannot be undone!")
+            confirm = self.get_input("Type 'DELETE' to confirm: ")
+            
+            if confirm == 'DELETE':
+                result = self.data_service.api_client.delete('orders', int(order_id))
+                self.success_message("Order deleted successfully")
+            else:
+                self.warning_message("Deletion cancelled")
+                
+        except Exception as e:
+            self.error_message(f"Failed to delete order: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+    
+    def order_management(self):
+        """Order management sub-menu"""
+        self.menu_stack = ["Main", "Entity Management", "Orders"]
+        self.print_header()
+        
+        options = [
+            ("1", "📋", "List All Orders"),
+            ("2", "👀", "View Order Details"),
+            ("3", "➕", "Create New Order"),
+            ("4", "✏️", "Edit Order"),
+            ("5", "❌", "Delete Order"),
+            ("0", "🔙", "Back to Entity Management"),
+        ]
+        
+        self.print_menu_box("ORDER MANAGEMENT", options)
+        
+        choice = self.get_input()
+        
+        if choice == "1":
+            self.list_orders()
+        elif choice == "2":
+            self.view_order_details()
+        elif choice == "3":
+            self.create_order()
+        elif choice == "4":
+            self.edit_order()
+        elif choice == "5":
+            self.delete_order()
+        elif choice == "0":
+            self.current_menu = "entities"
+        else:
+            self.error_message("Invalid choice")
+            self.pause()
     
     def route_management(self):
         """Route management placeholder"""
@@ -1116,11 +1371,240 @@ class CLIDashboard:
         self.current_menu = "entities"
     
     def location_management(self):
-        """Location management placeholder"""
+        """Location management sub-menu"""
+        self.menu_stack = ["Main", "Entity Management", "Locations"]
         self.print_header()
-        print(Colors.BOLD + "📍 LOCATION MANAGEMENT" + Colors.ENDC)
+        
+        options = [
+            ("1", "📋", "List All Locations"),
+            ("2", "👀", "View Location Details"),
+            ("3", "➕", "Create New Location"),
+            ("4", "✏️", "Edit Location"),
+            ("5", "❌", "Delete Location"),
+            ("0", "🔙", "Back to Entity Management"),
+        ]
+        
+        self.print_menu_box("LOCATION MANAGEMENT", options)
+        
+        choice = self.get_input()
+        
+        if choice == "1":
+            self.list_locations()
+        elif choice == "2":
+            self.view_location_details()
+        elif choice == "3":
+            self.create_location()
+        elif choice == "4":
+            self.edit_location()
+        elif choice == "5":
+            self.delete_location()
+        elif choice == "0":
+            self.current_menu = "entities"
+        else:
+            self.error_message("Invalid choice")
+            self.pause()
+            
+    def list_locations(self):
+        """List all locations"""
+        self.print_header()
+        print(Colors.BOLD + "📋 LOCATION LIST" + Colors.ENDC)
         print("-" * 65)
-        self.warning_message("Location management coming soon...")
+        
+        try:
+            locations = self.data_service.get_all('locations')
+            
+            if not locations:
+                self.warning_message("No locations found in the system")
+            else:
+                print(f"\n📊 Found {len(locations)} location(s):")
+                print("-" * 50)
+                print(f"{'ID':<5} {'Latitude':<12} {'Longitude':<12} {'Marked':<8}")
+                print("-" * 50)
+                
+                for location in locations:
+                    location_id = location.get('id', 'N/A')
+                    lat = location.get('lat', 0.0)
+                    lng = location.get('lng', 0.0)
+                    marked = "Yes" if location.get('marked', False) else "No"
+                    print(f"{location_id:<5} {lat:<12.4f} {lng:<12.4f} {marked:<8}")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve locations: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+
+    def view_location_details(self):
+        """View detailed location information"""
+        self.print_header()
+        print(Colors.BOLD + "👀 LOCATION DETAILS" + Colors.ENDC)
+        print("-" * 65)
+        
+        location_id = self.get_input("Enter location ID: ")
+        
+        if not location_id.isdigit():
+            self.error_message("Invalid location ID")
+            self.pause()
+            return
+        
+        try:
+            if self.data_service.mode == 'api':
+                location = self.data_service.api_client.get_by_id('locations', int(location_id))
+            else:
+                self.warning_message("Direct database location details not yet implemented")
+                self.pause()
+                return
+            
+            if not location:
+                self.error_message(f"Location with ID {location_id} not found")
+            else:
+                print(f"\n📍 Location Details:")
+                print("-" * 30)
+                print(f"ID: {location.get('id')}")
+                print(f"Latitude: {location.get('lat')}")
+                print(f"Longitude: {location.get('lng')}")
+                print(f"Marked: {'Yes' if location.get('marked') else 'No'}")
+                
+        except Exception as e:
+            self.error_message(f"Failed to retrieve location details: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+
+    def create_location(self):
+        """Create a new location"""
+        self.print_header()
+        print(Colors.BOLD + "➕ CREATE NEW LOCATION" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database location creation not yet implemented")
+            self.pause()
+            return
+        
+        try:
+            print("Enter location details:")
+            lat = self.get_input("Latitude: ")
+            lng = self.get_input("Longitude: ")
+            marked = self.get_input("Marked (y/n): ")
+            
+            if not lat or not lng:
+                self.error_message("Latitude and longitude are required")
+                self.pause()
+                return
+            
+            location_data = {
+                "lat": float(lat),
+                "lng": float(lng),
+                "marked": marked.lower() == 'y'
+            }
+            
+            new_location = self.data_service.api_client.create('locations', location_data)
+            self.success_message(f"Location created successfully with ID: {new_location.get('id')}")
+            
+        except ValueError:
+            self.error_message("Invalid numeric values for latitude or longitude")
+        except Exception as e:
+            self.error_message(f"Failed to create location: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+
+    def edit_location(self):
+        """Edit an existing location"""
+        self.print_header()
+        print(Colors.BOLD + "✏️ EDIT LOCATION" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database location editing not yet implemented")
+            self.pause()
+            return
+        
+        location_id = self.get_input("Enter location ID to edit: ")
+        
+        if not location_id.isdigit():
+            self.error_message("Invalid location ID")
+            self.pause()
+            return
+        
+        try:
+            # Get current location details
+            location = self.data_service.api_client.get_by_id('locations', int(location_id))
+            
+            print(f"\nCurrent location details:")
+            print(f"Latitude: {location.get('lat')}")
+            print(f"Longitude: {location.get('lng')}")
+            print(f"Marked: {'Yes' if location.get('marked') else 'No'}")
+            
+            print(f"\nEnter new values (press Enter to keep current):")
+            new_lat = self.get_input(f"Latitude [{location.get('lat')}]: ")
+            new_lng = self.get_input(f"Longitude [{location.get('lng')}]: ")
+            new_marked = self.get_input(f"Marked (y/n) [{'y' if location.get('marked') else 'n'}]: ")
+            
+            update_data = {}
+            if new_lat:
+                update_data['lat'] = float(new_lat)
+            if new_lng:
+                update_data['lng'] = float(new_lng)
+            if new_marked:
+                update_data['marked'] = new_marked.lower() == 'y'
+            
+            if update_data:
+                confirm = self.get_input("Save changes? (y/n): ")
+                if confirm.lower() == 'y':
+                    updated_location = self.data_service.api_client.update('locations', int(location_id), update_data)
+                    self.success_message("Location updated successfully")
+                else:
+                    self.warning_message("Changes cancelled")
+            else:
+                self.warning_message("No changes made")
+                
+        except Exception as e:
+            self.error_message(f"Failed to edit location: {e}")
+        
+        self.pause()
+        self.current_menu = "entities"
+
+    def delete_location(self):
+        """Delete a location"""
+        self.print_header()
+        print(Colors.BOLD + "❌ DELETE LOCATION" + Colors.ENDC)
+        print("-" * 65)
+        
+        if self.data_service.mode == "direct":
+            self.warning_message("Direct database location deletion not yet implemented")
+            self.pause()
+            return
+        
+        location_id = self.get_input("Enter location ID to delete: ")
+        
+        if not location_id.isdigit():
+            self.error_message("Invalid location ID")
+            self.pause()
+            return
+        
+        try:
+            # Get location details for confirmation
+            location = self.data_service.api_client.get_by_id('locations', int(location_id))
+            
+            print(f"\nLocation to delete:")
+            print(f"ID: {location.get('id')}")
+            print(f"Latitude: {location.get('lat')}")
+            print(f"Longitude: {location.get('lng')}")
+            
+            self.warning_message("This action cannot be undone!")
+            confirm = self.get_input("Type 'DELETE' to confirm: ")
+            
+            if confirm == 'DELETE':
+                result = self.data_service.api_client.delete('locations', int(location_id))
+                self.success_message("Location deleted successfully")
+            else:
+                self.warning_message("Deletion cancelled")
+                
+        except Exception as e:
+            self.error_message(f"Failed to delete location: {e}")
+        
         self.pause()
         self.current_menu = "entities"
     
