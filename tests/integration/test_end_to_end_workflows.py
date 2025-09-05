@@ -15,9 +15,6 @@ from app.database import Order, Route, Truck, Location, Cargo, Package, CargoTyp
 from order_processor import OrderProcessor, ValidationResult
 
 
-from dfm import PricingService
-
-
 class EndToEndWorkflowTests(IntegrationTestSuite):
     """
     Specialized tests for end-to-end order processing workflows
