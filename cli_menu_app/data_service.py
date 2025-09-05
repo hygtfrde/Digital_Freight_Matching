@@ -28,7 +28,8 @@ try:
 except ImportError as e:
     logger.warning(f"Direct database mode not available: {e}")
     DIRECT_MODE_AVAILABLE = False
-    # Create placeholder classes
+    # Create placeholder classes and variables
+    engine = None
     class DatabaseManager: pass
     class SystemStatus: pass
 
@@ -37,7 +38,9 @@ class DataConfig:
     """Configuration management with multiple source priority"""
     
     def __init__(self, cli_args=None):
-        self.config_file_path = os.path.join(os.path.dirname(__file__), 'config', 'settings.yaml')
+        # Look for config in parent directory
+        parent_dir = os.path.dirname(os.path.dirname(__file__))
+        self.config_file_path = os.path.join(parent_dir, 'config', 'settings.yaml')
         self._config_data = self._load_config()
         self._cli_args = cli_args or {}
         
@@ -196,6 +199,9 @@ class DataService:
             logger.info(f"DataService initialized in API mode: {config.api_url}")
         else:
             self.api_client = None
+            # Check if direct mode is available
+            if not DIRECT_MODE_AVAILABLE or engine is None:
+                raise RuntimeError("Direct database mode is not available. Missing database dependencies. Use --mode=api instead.")
             # Initialize DB manager with session
             self.session = Session(engine)
             self.db_manager = DatabaseManager(self.session)
@@ -215,6 +221,10 @@ class DataService:
                 return {"status": "error", "message": str(e)}
         else:
             try:
+                # Check if direct mode is available
+                if not DIRECT_MODE_AVAILABLE or engine is None:
+                    return {"status": "error", "message": "Direct database mode not available. Use --mode=api instead."}
+                
                 # Test database connection
                 from sqlmodel import text
                 with Session(engine) as session:
@@ -279,6 +289,36 @@ class DataService:
             return self.api_client.create(entity_type, data)
         else:
             # TODO: Implement direct database creation
+            raise NotImplementedError("Direct database CRUD not yet implemented")
+    
+    # Add missing CRUD methods that CRUD operations expect
+    def create(self, entity_type: str, data: Dict) -> Dict:
+        """Create new entity - alias for create_entity"""
+        return self.create_entity(entity_type, data)
+    
+    def get_by_id(self, entity_type: str, entity_id: int) -> Dict:
+        """Get entity by ID"""
+        if self.mode == "api":
+            return self.api_client.get_by_id(entity_type, entity_id)
+        else:
+            # TODO: Implement direct database get by ID
+            raise NotImplementedError("Direct database CRUD not yet implemented")
+    
+    def update(self, entity_type: str, entity_id: int, data: Dict) -> Dict:
+        """Update entity"""
+        if self.mode == "api":
+            return self.api_client.update(entity_type, entity_id, data)
+        else:
+            # TODO: Implement direct database update
+            raise NotImplementedError("Direct database CRUD not yet implemented")
+    
+    def delete(self, entity_type: str, entity_id: int) -> bool:
+        """Delete entity"""
+        if self.mode == "api":
+            result = self.api_client.delete(entity_type, entity_id)
+            return result.get("status") == "deleted"
+        else:
+            # TODO: Implement direct database delete
             raise NotImplementedError("Direct database CRUD not yet implemented")
 
 
