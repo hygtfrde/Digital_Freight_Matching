@@ -551,7 +551,44 @@ def delete_order(order_id: int, session: Session = Depends(get_session)):
         session.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to delete order: {str(e)}")
 
-# Package CRUD endpoints
+# Package endpoints
+@app.get("/packages")
+def get_packages(cargo_id: Optional[int] = None, session: Session = Depends(get_session)):
+    """Get packages, optionally filtered by cargo"""
+    query = select(Package)
+    
+    if cargo_id:
+        query = query.where(Package.cargo_id == cargo_id)
+    
+    packages = session.exec(query).all()
+    result = []
+    
+    for package in packages:
+        result.append({
+            "id": package.id,
+            "volume": package.volume,
+            "weight": package.weight,
+            "type": package.type.value if package.type else None,
+            "cargo_id": package.cargo_id
+        })
+    
+    return result
+
+@app.get("/packages/{package_id}")
+def get_package_details(package_id: int, session: Session = Depends(get_session)):
+    """Get detailed package information"""
+    package = session.get(Package, package_id)
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    return {
+        "id": package.id,
+        "volume": package.volume,
+        "weight": package.weight,
+        "type": package.type.value if package.type else None,
+        "cargo_id": package.cargo_id
+    }
+
 @app.post("/packages")
 def create_package(package_data: dict, session: Session = Depends(get_session)):
     """Create a new package"""
@@ -626,7 +663,54 @@ def delete_package(package_id: int, session: Session = Depends(get_session)):
         session.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to delete package: {str(e)}")
 
-# Cargo CRUD endpoints
+# Cargo endpoints
+@app.get("/cargo")
+def get_cargo(order_id: Optional[int] = None, truck_id: Optional[int] = None, session: Session = Depends(get_session)):
+    """Get cargo, optionally filtered by order or truck"""
+    query = select(Cargo)
+    
+    if order_id:
+        query = query.where(Cargo.order_id == order_id)
+    if truck_id:
+        query = query.where(Cargo.truck_id == truck_id)
+    
+    cargo_loads = session.exec(query).all()
+    result = []
+    
+    for cargo in cargo_loads:
+        # Get associated packages
+        packages = session.exec(select(Package).where(Package.cargo_id == cargo.id)).all()
+        
+        result.append({
+            "id": cargo.id,
+            "order_id": cargo.order_id,
+            "truck_id": cargo.truck_id,
+            "total_volume": cargo.total_volume(),
+            "total_weight": cargo.total_weight(),
+            "packages_count": len(packages)
+        })
+    
+    return result
+
+@app.get("/cargo/{cargo_id}")
+def get_cargo_details(cargo_id: int, session: Session = Depends(get_session)):
+    """Get detailed cargo information"""
+    cargo = session.get(Cargo, cargo_id)
+    if not cargo:
+        raise HTTPException(status_code=404, detail="Cargo not found")
+    
+    # Get associated packages
+    packages = session.exec(select(Package).where(Package.cargo_id == cargo_id)).all()
+    
+    return {
+        "id": cargo.id,
+        "order_id": cargo.order_id,
+        "truck_id": cargo.truck_id,
+        "total_volume": cargo.total_volume(),
+        "total_weight": cargo.total_weight(),
+        "packages": [{"id": p.id, "volume": p.volume, "weight": p.weight, "type": p.type.value if p.type else None} for p in packages]
+    }
+
 @app.post("/cargo")
 def create_cargo(cargo_data: dict, session: Session = Depends(get_session)):
     """Create a new cargo"""
