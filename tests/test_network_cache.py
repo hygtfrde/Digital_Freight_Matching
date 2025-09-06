@@ -8,7 +8,6 @@ import pytest
 import time
 import threading
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
 from services.route_calculation import NetworkCache, BoundingBox
 
 

@@ -13,12 +13,9 @@ Key Requirements Validated:
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from enum import Enum
-import math
 
-from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
 
 
 class ValidationStatus(str, Enum):

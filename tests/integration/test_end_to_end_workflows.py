@@ -7,12 +7,9 @@ through route assignment, validation, and profitability calculation.
 
 import unittest
 import time
-from typing import List, Dict, Any
-from sqlmodel import Session, select
 
 from tests.integration.test_integration_suite import IntegrationTestSuite
 from app.database import Order, Route, Truck, Location, Cargo, Package, CargoType
-from order_processor import OrderProcessor, ValidationResult
 
 
 class EndToEndWorkflowTests(IntegrationTestSuite):
@@ -89,7 +86,7 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
                     suitable_routes.append((route, truck, result))
         
         # Step 5: Verify at least one suitable route found
-        self.assertGreater(len(suitable_routes), 0, 
+        self.assert_Greater(len(suitable_routes), 0, 
                           "Should find at least one suitable route for valid order")
         
         # Step 6: Select best route (highest efficiency score)
@@ -114,8 +111,8 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
         self.session.refresh(order)
         self.session.refresh(cargo)
         
-        self.assertEqual(order.route_id, best_route.id, "Order should be assigned to best route")
-        self.assertEqual(cargo.truck_id, best_truck.id, "Cargo should be assigned to truck")
+        self.assert_Equal(order.route_id, best_route.id, "Order should be assigned to best route")
+        self.assert_Equal(cargo.truck_id, best_truck.id, "Cargo should be assigned to truck")
         
         # Step 9: Calculate profitability impact
         original_profitability = best_route.profitability
@@ -126,7 +123,7 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
         self.session.commit()
         
         # Step 10: Verify profitability improvement
-        self.assertGreater(best_route.profitability, original_profitability,
+        self.assert_Greater(best_route.profitability, original_profitability,
                           "Route profitability should improve after adding order")
         
         improvement = best_route.profitability - original_profitability
@@ -187,24 +184,24 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
         processing_time = time.time() - start_time
         
         # Verify batch processing results
-        self.assertEqual(len(batch_results), len(batch_orders),
+        self.assert_Equal(len(batch_results), len(batch_orders),
                         "Should process all orders in batch")
         
         # Performance check
         avg_time_per_order = processing_time / len(batch_orders)
-        self.assertLess(avg_time_per_order, 2.0,
+        self.assert_Less(avg_time_per_order, 2.0,
                        f"Average processing time {avg_time_per_order:.2f}s should be <2s per order")
         
         # Verify results quality
         valid_orders = sum(1 for result in batch_results.values() if result.is_valid)
-        self.assertGreater(valid_orders, 0, "At least some orders should be valid")
+        self.assert_Greater(valid_orders, 0, "At least some orders should be valid")
         
         # Check that results contain proper metrics
         for order_id, result in batch_results.items():
             self.assertIsInstance(result.metrics, dict)
             if result.is_valid:
-                self.assertIn('order_volume_m3', result.metrics)
-                self.assertIn('order_weight_kg', result.metrics)
+                self.assert_In('order_volume_m3', result.metrics)
+                self.assert_In('order_weight_kg', result.metrics)
     
     def test_order_rejection_workflow(self):
         """
@@ -260,7 +257,7 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
                         rejection_reasons.append(error.result.value)
         
         # Verify order was properly rejected with reasons
-        self.assertGreater(len(rejection_reasons), 0, "Order should be rejected with reasons")
+        self.assert_Greater(len(rejection_reasons), 0, "Order should be rejected with reasons")
         
         # Check for expected rejection reasons
         expected_rejections = [
@@ -273,7 +270,7 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
         expected_set = set(expected_rejections)
         
         # Should have at least one expected rejection reason
-        self.assertTrue(found_rejections.intersection(expected_set),
+        self.assert_True(found_rejections.intersection(expected_set),
                        f"Should have expected rejection reasons. Found: {found_rejections}")
     
     def test_route_optimization_workflow(self):
@@ -369,17 +366,17 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
         self.session.commit()
         
         # Verify optimization results
-        self.assertGreater(combined_orders, 1, "Should combine multiple orders on same route")
-        self.assertLess(total_volume, truck.capacity, "Combined cargo should fit in truck")
-        self.assertGreater(target_route.profitability, original_profitability,
+        self.assert_Greater(combined_orders, 1, "Should combine multiple orders on same route")
+        self.assert_Less(total_volume, truck.capacity, "Combined cargo should fit in truck")
+        self.assert_Greater(target_route.profitability, original_profitability,
                           "Route profitability should improve with combined orders")
         
         # Calculate efficiency metrics
         capacity_utilization = (total_volume / truck.capacity) * 100
         profitability_improvement = target_route.profitability - original_profitability
         
-        self.assertGreater(capacity_utilization, 30.0, "Should achieve reasonable capacity utilization")
-        self.assertGreater(profitability_improvement, 50.0, "Should achieve significant profitability improvement")
+        self.assert_Greater(capacity_utilization, 30.0, "Should achieve reasonable capacity utilization")
+        self.assert_Greater(profitability_improvement, 50.0, "Should achieve significant profitability improvement")
     
     def _calculate_route_score(self, metrics: Dict[str, Any]) -> float:
         """

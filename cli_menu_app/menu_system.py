@@ -4,8 +4,6 @@ Handles menu display, navigation, and routing
 """
 
 import sys
-from typing import Dict, Any, Optional
-from datetime import datetime
 
 from ui_components import (
     print_header, print_menu_box, get_input, pause, print_success, 
@@ -107,7 +105,7 @@ class MenuSystem:
                 print(f"Locations: {getattr(status, 'locations', 'N/A')}")
                 print(f"Clients: {getattr(status, 'clients', 'N/A')}")
             
-            print(f"\nData Mode: {self.data_service.mode.upper()}")
+            print(f"\n_Data Mode: {self.data_service.mode.upper()}")
             if self.data_service.mode == "api":
                 print(f"API URL: {self.data_service.config.api_url}")
             else:

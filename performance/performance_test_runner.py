@@ -243,7 +243,7 @@ class PerformanceTestRunner:
                 'overall_compliance': compliance['overall_compliant']
             }
             
-            print("\nPerformance assessment completed successfully!")
+            print("\n_Performance assessment completed successfully!")
             
         except Exception as e:
             print(f"Error during performance testing: {str(e)}")
@@ -370,15 +370,15 @@ class PerformanceTestRunner:
         print("PERFORMANCE ASSESSMENT SUMMARY REPORT")
         print("="*60)
         
-        print(f"\nTest Timestamp: {results['timestamp']}")
+        print(f"\n_Test Timestamp: {results['timestamp']}")
         
         # Test Summary
         summary = results['test_summary']
-        print(f"\nOverall Status: {'PASS' if summary.get('overall_compliance', False) else 'FAIL'}")
+        print(f"\n_Overall Status: {'PASS' if summary.get('overall_compliance', False) else 'FAIL'}")
         print(f"Tests Run: {summary.get('total_tests_run', 0)}")
         
         # Individual Test Results
-        print("\nIndividual Test Results:")
+        print("\n_Individual Test Results:")
         print(f"  Single Order Performance: {'PASS' if summary.get('single_order_performance_ok') else 'FAIL'}")
         print(f"  Batch Processing: {'PASS' if summary.get('batch_processing_ok') else 'FAIL'}")
         print(f"  Load Testing: {'PASS' if summary.get('load_test_ok') else 'FAIL'}")
@@ -386,7 +386,7 @@ class PerformanceTestRunner:
         print(f"  Benchmarks: {'PASS' if summary.get('benchmarks_passed') else 'FAIL'}")
         
         # Key Metrics
-        print("\nKey Performance Metrics:")
+        print("\n_Key Performance Metrics:")
         single_time = results['profiling_results']['single_order']['execution_time_ms']
         print(f"  Single Order Time: {single_time:.1f}ms (limit: 5000ms)")
         
@@ -403,7 +403,7 @@ class PerformanceTestRunner:
         print(f"  Memory Growth: {memory_growth:.1f}MB")
         
         # Recommendations
-        print("\nRecommendations:")
+        print("\n_Recommendations:")
         for i, rec in enumerate(results['recommendations'], 1):
             print(f"  {i}. {rec}")
         
@@ -426,7 +426,7 @@ def main():
     # Save results
     filepath = runner.save_results(results)
     
-    print(f"\nDetailed results saved to: {filepath}")
+    print(f"\n_Detailed results saved to: {filepath}")
     print("Performance assessment complete!")
 
 

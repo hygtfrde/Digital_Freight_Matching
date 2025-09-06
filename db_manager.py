@@ -9,7 +9,6 @@ import os
 import sys
 from datetime import datetime
 from io import StringIO
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 from sqlmodel import Session, select
@@ -32,8 +31,8 @@ from database import (
 )
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logging.basic_Config(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.get_Logger(__name__)
 
 # Contract data from Too-Big-To-Fail company
 CONTRACT_DATA = """route,anchor_point,cargo_miles,total_miles,truck_cost,pallets,cargo_cost,empty_cargo_cost,markup,price_time,price_cargo,margin,stop_count,hours

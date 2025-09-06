@@ -2,7 +2,6 @@
 import logging
 from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 from sqlmodel import Session
 
@@ -21,8 +20,8 @@ from .database import (
 )
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basic_Config(level=logging.INFO)
+logger = logging.get_Logger(__name__)
 
 
 class DataIngestionService:

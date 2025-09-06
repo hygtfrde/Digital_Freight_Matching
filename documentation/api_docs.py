@@ -433,25 +433,25 @@ print(f"Daily P&L: ${analytics['financial']['total_daily_loss']}")
 ### JavaScript SDK
 ```javascript
 class DFMClient {
-    constructor(baseUrl = 'http://localhost:8000') {
-        this.baseUrl = baseUrl;
+    constructor(base_Url = 'http://localhost:8000') {
+        this.base_Url = base_Url;
     }
     
-    async createOrder(originId, destinyId, clientId) {
-        const response = await fetch(`${this.baseUrl}/orders`, {
+    async create_Order(origin_Id, destiny_Id, client_Id) {
+        const response = await fetch(`${this.base_Url}/orders`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                location_origin_id: originId,
-                location_destiny_id: destinyId,
-                client_id: clientId
+                location_origin_id: origin_Id,
+                location_destiny_id: destiny_Id,
+                client_id: client_Id
             })
         });
         return response.json();
     }
     
-    async getAnalytics() {
-        const response = await fetch(`${this.baseUrl}/analytics/summary`);
+    async get_Analytics() {
+        const response = await fetch(`${this.base_Url}/analytics/summary`);
         return response.json();
     }
 }

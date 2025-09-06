@@ -239,7 +239,7 @@ def main():
     
     summary = validator.generate_summary_report(reports)
     
-    print(f"\nOverall Status: {summary['overall_status']}")
+    print(f"\n_Overall Status: {summary['overall_status']}")
     print(f"Total Requirements: {summary['total_requirements']}")
     print(f"Passed: {summary['passed_count']}")
     print(f"Failed: {summary['failed_count']}")

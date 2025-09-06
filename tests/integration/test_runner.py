@@ -6,15 +6,12 @@ Simple test runner for integration tests to avoid import conflicts
 import unittest
 import sys
 import os
-import tempfile
 import time
-from typing import Dict, Any
 
 # Add parent directories to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import only what we need to avoid conflicts
-from order_processor import OrderProcessor, ValidationResult, ProcessingResult
 from validation.business_validator import BusinessValidator, ValidationStatus
 
 
@@ -24,13 +21,13 @@ class SimpleIntegrationTest(unittest.TestCase):
     without database conflicts
     """
     
-    def setUp(self):
+    def set_Up(self):
         """Set up for each test"""
         self.order_processor = OrderProcessor()
         self.business_validator = BusinessValidator()
         self.test_start_time = time.time()
     
-    def tearDown(self):
+    def tear_Down(self):
         """Clean up after each test"""
         test_duration = time.time() - self.test_start_time
         if test_duration > 5.0:  # Performance assertion: <5 seconds
@@ -42,26 +39,26 @@ class SimpleIntegrationTest(unittest.TestCase):
         self.assertIsNotNone(self.order_processor.constants)
         
         # Test constants are properly set
-        self.assertEqual(self.order_processor.constants.MAX_PROXIMITY_KM, 1.0)
-        self.assertEqual(self.order_processor.constants.MAX_WEIGHT_LBS, 9180)
-        self.assertEqual(self.order_processor.constants.MAX_ROUTE_HOURS, 10.0)
-        self.assertEqual(self.order_processor.constants.STOP_TIME_MINUTES, 15)
+        self.assert_Equal(self.order_processor.constants.MAX_PROXIMITY_KM, 1.0)
+        self.assert_Equal(self.order_processor.constants.MAX_WEIGHT_LBS, 9180)
+        self.assert_Equal(self.order_processor.constants.MAX_ROUTE_HOURS, 10.0)
+        self.assert_Equal(self.order_processor.constants.STOP_TIME_MINUTES, 15)
     
     def test_business_validator_initialization(self):
         """Test that business validator initializes correctly"""
         self.assertIsInstance(self.business_validator, BusinessValidator)
         
         # Test business constants
-        self.assertEqual(self.business_validator.TARGET_DAILY_LOSS_REDUCTION, 388.15)
-        self.assertEqual(self.business_validator.MAX_PROXIMITY_KM, 1.0)
-        self.assertEqual(self.business_validator.MAX_TRUCK_VOLUME_M3, 48.0)
-        self.assertEqual(self.business_validator.MAX_TRUCK_WEIGHT_LBS, 9180.0)
-        self.assertEqual(self.business_validator.MAX_ROUTE_TIME_HOURS, 10.0)
-        self.assertEqual(self.business_validator.REQUIRED_CONTRACT_ROUTES, 5)
+        self.assert_Equal(self.business_validator.TARGET_DAILY_LOSS_REDUCTION, 388.15)
+        self.assert_Equal(self.business_validator.MAX_PROXIMITY_KM, 1.0)
+        self.assert_Equal(self.business_validator.MAX_TRUCK_VOLUME_M3, 48.0)
+        self.assert_Equal(self.business_validator.MAX_TRUCK_WEIGHT_LBS, 9180.0)
+        self.assert_Equal(self.business_validator.MAX_ROUTE_TIME_HOURS, 10.0)
+        self.assert_Equal(self.business_validator.REQUIRED_CONTRACT_ROUTES, 5)
         
         # Test contract destinations
         expected_destinations = ["Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
-        self.assertEqual(self.business_validator.CONTRACT_DESTINATIONS, expected_destinations)
+        self.assert_Equal(self.business_validator.CONTRACT_DESTINATIONS, expected_destinations)
     
     def test_validation_result_structure(self):
         """Test that validation results have proper structure"""
@@ -121,12 +118,12 @@ class SimpleIntegrationTest(unittest.TestCase):
         for i in range(100):
             # Simple calculations that should be fast
             distance = ((33.7490 - 32.0835) ** 2 + (-84.3880 - (-81.0998)) ** 2) ** 0.5
-            self.assertGreater(distance, 0)
+            self.assert_Greater(distance, 0)
         
         operation_time = time.time() - start_time
         
         # Should complete very quickly
-        self.assertLess(operation_time, 1.0, 
+        self.assert_Less(operation_time, 1.0, 
                        f"Basic operations took {operation_time:.3f}s, should be <1s")
         
         print(f"✓ Performance test passed: {operation_time:.3f}s for 100 operations")
@@ -135,7 +132,7 @@ class SimpleIntegrationTest(unittest.TestCase):
         """Test constraint validation logic without database"""
         # Test proximity constraint calculation
         max_proximity = self.order_processor.constants.MAX_PROXIMITY_KM
-        self.assertEqual(max_proximity, 1.0)
+        self.assert_Equal(max_proximity, 1.0)
         
         # Test capacity constraint values
         max_volume = 48.0  # m³
@@ -150,24 +147,24 @@ class SimpleIntegrationTest(unittest.TestCase):
         max_hours = self.order_processor.constants.MAX_ROUTE_HOURS
         stop_minutes = self.order_processor.constants.STOP_TIME_MINUTES
         
-        self.assertEqual(max_hours, 10.0)
-        self.assertEqual(stop_minutes, 15)
+        self.assert_Equal(max_hours, 10.0)
+        self.assert_Equal(stop_minutes, 15)
         
         print("✓ Constraint validation logic test passed")
     
     def test_business_validation_structure(self):
         """Test business validation without database dependencies"""
         # Test validation status enum
-        self.assertTrue(hasattr(ValidationStatus, 'PASSED'))
-        self.assertTrue(hasattr(ValidationStatus, 'FAILED'))
-        self.assertTrue(hasattr(ValidationStatus, 'WARNING'))
+        self.assert_True(hasattr(ValidationStatus, 'PASSED'))
+        self.assert_True(hasattr(ValidationStatus, 'FAILED'))
+        self.assert_True(hasattr(ValidationStatus, 'WARNING'))
         
         # Test that validator has required methods
-        self.assertTrue(hasattr(self.business_validator, 'validate_profitability_requirements'))
-        self.assertTrue(hasattr(self.business_validator, 'validate_proximity_constraint'))
-        self.assertTrue(hasattr(self.business_validator, 'validate_capacity_constraints'))
-        self.assertTrue(hasattr(self.business_validator, 'validate_time_constraints'))
-        self.assertTrue(hasattr(self.business_validator, 'validate_contract_compliance'))
+        self.assert_True(hasattr(self.business_validator, 'validate_profitability_requirements'))
+        self.assert_True(hasattr(self.business_validator, 'validate_proximity_constraint'))
+        self.assert_True(hasattr(self.business_validator, 'validate_capacity_constraints'))
+        self.assert_True(hasattr(self.business_validator, 'validate_time_constraints'))
+        self.assert_True(hasattr(self.business_validator, 'validate_contract_compliance'))
         
         print("✓ Business validation structure test passed")
     
@@ -184,7 +181,7 @@ class SimpleIntegrationTest(unittest.TestCase):
         
         for validation in required_validations:
             method_name = f'validate_{validation}'
-            self.assertTrue(hasattr(self.business_validator, method_name),
+            self.assert_True(hasattr(self.business_validator, method_name),
                            f"Business validator should have {method_name} method")
         
         # Verify integration test requirements coverage
@@ -220,7 +217,7 @@ def run_simple_integration_tests():
     print("\n" + "=" * 80)
     print("SIMPLE INTEGRATION TEST SUMMARY")
     print("=" * 80)
-    print(f"Tests run: {result.testsRun}")
+    print(f"Tests run: {result.tests_Run}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")
     print(f"Skipped: {len(result.skipped)}")
@@ -235,12 +232,12 @@ def run_simple_integration_tests():
         for test, traceback in result.errors:
             print(f"- {test}: {traceback}")
     
-    success = result.wasSuccessful()
-    print(f"\nResult: {'✓ PASSED' if success else '✗ FAILED'}")
+    success = result.was_Successful()
+    print(f"\n_Result: {'✓ PASSED' if success else '✗ FAILED'}")
     
     return result
 
 
 if __name__ == "__main__":
     result = run_simple_integration_tests()
-    sys.exit(0 if result.wasSuccessful() else 1)
+    sys.exit(0 if result.was_Successful() else 1)

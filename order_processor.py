@@ -8,12 +8,9 @@ Implements order validation and constraint checking with business rules:
 - Uses exact constants from documentation
 """
 
-import math
-from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
 
 
 class ValidationResult(Enum):

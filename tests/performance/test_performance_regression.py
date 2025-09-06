@@ -14,14 +14,12 @@ Requirements addressed:
 import unittest
 import time
 import statistics
-from typing import List, Dict, Any
 import sys
 import os
 
 # Add parent directories to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from performance.performance_assessor import PerformanceAssessor, PerformanceMetrics
 from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
 from order_processor import OrderProcessor
 
@@ -34,7 +32,7 @@ class TestPerformanceRegression(unittest.TestCase):
     to detect performance degradation over time.
     """
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test environment"""
         self.assessor = PerformanceAssessor()
         self.order_processor = OrderProcessor()
@@ -115,7 +113,7 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Assert performance requirements
-        self.assertTrue(metrics.success, f"Order processing failed: {metrics.error_message}")
+        self.assert_True(metrics.success, f"Order processing failed: {metrics.error_message}")
         self.assertLessEqual(
             metrics.execution_time_ms, 
             self.max_single_order_time_ms,
@@ -123,7 +121,7 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Check additional metrics
-        self.assertGreater(metrics.additional_data.get('success_rate_percent', 0), 90)
+        self.assert_Greater(metrics.additional_data.get('success_rate_percent', 0), 90)
         
     def test_batch_order_processing_performance(self):
         """Test batch processing performance without degradation"""
@@ -144,7 +142,7 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Assert batch processing requirements
-        self.assertTrue(metrics.success, f"Batch processing failed: {metrics.error_message}")
+        self.assert_True(metrics.success, f"Batch processing failed: {metrics.error_message}")
         self.assertLessEqual(
             metrics.execution_time_ms,
             self.max_batch_processing_time_ms,
@@ -179,7 +177,7 @@ class TestPerformanceRegression(unittest.TestCase):
                 success_rates.append(metrics.additional_data.get('success_rate_percent', 0))
         
         # Check consistency
-        self.assertGreater(len(execution_times), 0, "No successful runs to analyze")
+        self.assert_Greater(len(execution_times), 0, "No successful runs to analyze")
         
         # Calculate coefficient of variation (std dev / mean)
         if len(execution_times) > 1:
@@ -188,7 +186,7 @@ class TestPerformanceRegression(unittest.TestCase):
             coefficient_of_variation = (std_dev / mean_time) * 100
             
             # Performance should be consistent (CV < 30%)
-            self.assertLess(
+            self.assert_Less(
                 coefficient_of_variation,
                 30.0,
                 f"Performance inconsistent: CV = {coefficient_of_variation:.1f}%"
@@ -236,7 +234,7 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Check throughput is reasonable
-        self.assertGreater(
+        self.assert_Greater(
             load_results.throughput_ops_per_second,
             0.1,  # At least 0.1 operations per second
             "Throughput too low"
@@ -251,21 +249,21 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Check for memory leaks
-        self.assertLess(
+        self.assert_Less(
             memory_report.memory_growth_mb,
             50.0,  # Allow up to 50MB growth in short test
             f"Memory growth {memory_report.memory_growth_mb:.1f}MB indicates potential leak"
         )
         
         # Check that we have reasonable number of samples
-        self.assertGreater(
+        self.assert_Greater(
             memory_report.samples_count,
             20,  # Should have at least 20 samples in 30 seconds
             "Insufficient memory samples collected"
         )
         
         # Check for leak indicators
-        self.assertEqual(
+        self.assert_Equal(
             len([leak for leak in memory_report.potential_leaks if "exceeds threshold" in leak]),
             0,
             f"Memory leak detected: {memory_report.potential_leaks}"
@@ -303,7 +301,7 @@ class TestPerformanceRegression(unittest.TestCase):
         )
         
         # Should have proper error information
-        self.assertFalse(metrics.success, "Invalid order should fail processing")
+        self.assert_False(metrics.success, "Invalid order should fail processing")
         self.assertIsNotNone(metrics.error_message, "Should have error message")
     
     def test_benchmark_regression_detection(self):
@@ -336,10 +334,10 @@ class TestPerformanceRegression(unittest.TestCase):
         benchmark_results = self.assessor.run_benchmarks(test_scenarios)
         
         # Check benchmark results
-        self.assertIn("simple_order_test", benchmark_results)
+        self.assert_In("simple_order_test", benchmark_results)
         result = benchmark_results["simple_order_test"]
         
-        self.assertTrue(result.meets_requirements, "Benchmark should meet requirements")
+        self.assert_True(result.meets_requirements, "Benchmark should meet requirements")
         self.assertIsNotNone(result.current_performance, "Should have current performance data")
         self.assertIsNotNone(result.baseline_performance, "Should have baseline performance data")
     
@@ -358,22 +356,22 @@ class TestPerformanceRegression(unittest.TestCase):
         report = self.assessor.generate_performance_report()
         
         # Validate report structure
-        self.assertIn('timestamp', report)
-        self.assertIn('summary', report)
-        self.assertIn('metrics_history', report)
-        self.assertIn('recommendations', report)
-        self.assertIn('compliance', report)
+        self.assert_In('timestamp', report)
+        self.assert_In('summary', report)
+        self.assert_In('metrics_history', report)
+        self.assert_In('recommendations', report)
+        self.assert_In('compliance', report)
         
         # Check summary data
         if report['summary']:
-            self.assertIn('average_execution_time_ms', report['summary'])
-            self.assertIn('success_rate_percent', report['summary'])
-            self.assertIn('total_operations', report['summary'])
+            self.assert_In('average_execution_time_ms', report['summary'])
+            self.assert_In('success_rate_percent', report['summary'])
+            self.assert_In('total_operations', report['summary'])
         
         # Check compliance data
-        self.assertIn('meets_5_second_requirement', report['compliance'])
-        self.assertIn('acceptable_success_rate', report['compliance'])
-        self.assertIn('performance_stable', report['compliance'])
+        self.assert_In('meets_5_second_requirement', report['compliance'])
+        self.assert_In('acceptable_success_rate', report['compliance'])
+        self.assert_In('performance_stable', report['compliance'])
 
 
 class TestPerformanceAssessorIntegration(unittest.TestCase):
@@ -381,7 +379,7 @@ class TestPerformanceAssessorIntegration(unittest.TestCase):
     Integration tests for PerformanceAssessor with real system components
     """
     
-    def setUp(self):
+    def set_Up(self):
         """Set up integration test environment"""
         self.assessor = PerformanceAssessor()
     
@@ -419,8 +417,8 @@ class TestPerformanceAssessorIntegration(unittest.TestCase):
         metrics = self.assessor.profile_order_processing([order], routes, trucks)
         
         # Validate integration
-        self.assertTrue(metrics.success, "Integration test should succeed")
-        self.assertGreater(metrics.execution_time_ms, 0, "Should have execution time")
+        self.assert_True(metrics.success, "Integration test should succeed")
+        self.assert_Greater(metrics.execution_time_ms, 0, "Should have execution time")
         self.assertIsNotNone(metrics.additional_data, "Should have additional data")
 
 

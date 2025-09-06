@@ -61,7 +61,7 @@ def demo_cleanup_analysis():
     print(f"Found {len(report['duplicates'])} potential duplicates:")
     
     if report['duplicates']:
-        print("\nTop duplicates:")
+        print("\n_Top duplicates:")
         for i, dup in enumerate(report['duplicates'][:5], 1):
             file1_name = Path(dup['file1']).name
             file2_name = Path(dup['file2']).name
@@ -82,11 +82,11 @@ def demo_cleanup_analysis():
             item_type = item['type']
             by_type[item_type] = by_type.get(item_type, 0) + 1
         
-        print("\nBreakdown by type:")
+        print("\n_Breakdown by type:")
         for item_type, count in by_type.items():
             print(f"  📦 {item_type}: {count} items")
         
-        print("\nTop unused items:")
+        print("\n_Top unused items:")
         for i, item in enumerate(report['dead_code'][:8], 1):
             file_name = Path(item['file']).name
             print(f"  {i}. {item['type']} '{item['name']}' in {file_name}:{item['line']}")
@@ -104,7 +104,7 @@ def demo_cleanup_analysis():
         files_by_issues = sorted(report['quality_issues'], 
                                key=lambda x: x['issues_count'], reverse=True)
         
-        print("\nFiles needing attention:")
+        print("\n_Files needing attention:")
         for i, file_report in enumerate(files_by_issues[:5], 1):
             file_name = Path(file_report['file']).name
             print(f"  {i}. {file_name}: {file_report['issues_count']} issues")
@@ -129,13 +129,13 @@ def demo_cleanup_analysis():
             priority = rec['priority']
             by_priority[priority] = by_priority.get(priority, 0) + 1
         
-        print("\nBy priority:")
+        print("\n_By priority:")
         for priority in ['high', 'medium', 'low']:
             count = by_priority.get(priority, 0)
             if count > 0:
                 print(f"  🔥 {priority}: {count} recommendations")
         
-        print("\nTop recommendations:")
+        print("\n_Top recommendations:")
         high_priority = [r for r in report['refactoring_recommendations'] if r['priority'] == 'high']
         for i, rec in enumerate(high_priority[:3], 1):
             file_name = Path(rec['file']).name

@@ -177,6 +177,10 @@ def demo_comprehensive_assessment():
     return results
 
 
+# TODO: This function 'main' is duplicated in db_manager.py
+
+# TODO: This function 'main' is duplicated in db_manager.py
+
 def main():
     """Main demo function"""
     print("Digital Freight Matching System")
@@ -201,7 +205,7 @@ def main():
         print("DEMO COMPLETE")
         print("="*60)
         print("All performance assessment capabilities demonstrated successfully!")
-        print("\nKey Features Demonstrated:")
+        print("\n_Key Features Demonstrated:")
         print("✓ Order processing performance profiling")
         print("✓ Load testing with concurrent users")
         print("✓ Memory usage monitoring and leak detection")
@@ -212,17 +216,17 @@ def main():
         # Show compliance status
         if results and 'compliance_check' in results:
             compliance = results['compliance_check']
-            print(f"\nSystem Compliance Status:")
+            print(f"\n_System Compliance Status:")
             print(f"  5-second requirement: {'✓' if compliance.get('meets_5_second_requirement') else '✗'}")
             print(f"  Batch processing stable: {'✓' if compliance.get('batch_processing_stable') else '✗'}")
             print(f"  Acceptable error rate: {'✓' if compliance.get('acceptable_error_rate') else '✗'}")
             print(f"  Memory stable: {'✓' if compliance.get('memory_stable') else '✗'}")
             print(f"  Overall compliant: {'✓' if compliance.get('overall_compliant') else '✗'}")
         
-        print(f"\nDemo completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"\n_Demo completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
     except Exception as e:
-        print(f"\nDemo failed with error: {str(e)}")
+        print(f"\n_Demo failed with error: {str(e)}")
         import traceback
         traceback.print_exc()
         return 1

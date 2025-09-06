@@ -179,7 +179,7 @@ def _test_route(lat1: float, lon1: float, lat2: float, lon2: float):
     print(f"Linear distance: {linear_dist:.2f} km ({linear_miles:.2f} miles)")
     
     # Calculate road distance
-    print("\nCalculating road distance...")
+    print("\n_Calculating road distance...")
     road_dist, route, G = get_road_distance(lat1, lon1, lat2, lon2)
     
     if road_dist:
@@ -195,7 +195,7 @@ def _test_route(lat1: float, lon1: float, lat2: float, lon2: float):
         route, G = None, None
     
     # Create map
-    print("\nCreating route map...")
+    print("\n_Creating route map...")
     map_file = create_route_map(lat1, lon1, lat2, lon2, route, G, road_dist, linear_dist)
     print(f"Map saved as: {map_file}")
     
@@ -211,7 +211,7 @@ def main():
     print("Usage examples:")
     
     # Example 1: Atlanta to Ringgold (from your freight data)
-    print("\nExample 1: Atlanta to Ringgold, GA")
+    print("\n_Example 1: Atlanta to Ringgold, GA")
     _test_route(
         lat1=33.754413815792205, lon1=-84.3875298776525,  # Atlanta
         lat2=34.87433823445323, lon2=-85.084123334995166   # Ringgold
@@ -219,7 +219,7 @@ def main():
     
     # You can test other routes by calling _test_route with different coordinates
     # Example 2: Shorter route within Atlanta
-    # print("\nExample 2: Short route within Atlanta")
+    # print("\n_Example 2: Short route within Atlanta")
     # _test_route(
     #     lat1=33.7490, lon1=-84.3880,  # Downtown Atlanta
     #     lat2=33.7756, lon2=-84.3963   # Georgia Tech

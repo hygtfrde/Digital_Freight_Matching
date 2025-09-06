@@ -9,8 +9,6 @@ Tests all validation constraints and business rules:
 """
 
 import unittest
-import math
-from unittest.mock import Mock, patch
 
 from order_processor import (
     OrderProcessor, 
@@ -29,45 +27,45 @@ class TestOrderProcessingConstants(unittest.TestCase):
         """Verify cost constants from documentation"""
         constants = OrderProcessingConstants()
         
-        self.assertEqual(constants.TOTAL_COST_PER_MILE, 1.693846154)
-        self.assertEqual(constants.TRUCKER_COST_PER_MILE, 0.78)
-        self.assertEqual(constants.FUEL_COST_PER_MILE, 0.37)
-        self.assertEqual(constants.LEASING_COST_PER_MILE, 0.27)
-        self.assertEqual(constants.MAINTENANCE_COST_PER_MILE, 0.17)
-        self.assertEqual(constants.INSURANCE_COST_PER_MILE, 0.1)
+        self.assert_Equal(constants.TOTAL_COST_PER_MILE, 1.693846154)
+        self.assert_Equal(constants.TRUCKER_COST_PER_MILE, 0.78)
+        self.assert_Equal(constants.FUEL_COST_PER_MILE, 0.37)
+        self.assert_Equal(constants.LEASING_COST_PER_MILE, 0.27)
+        self.assert_Equal(constants.MAINTENANCE_COST_PER_MILE, 0.17)
+        self.assert_Equal(constants.INSURANCE_COST_PER_MILE, 0.1)
     
     def test_performance_constants(self):
         """Verify performance constants from documentation"""
         constants = OrderProcessingConstants()
         
-        self.assertEqual(constants.MILES_PER_GALLON, 6.5)
-        self.assertEqual(constants.GAS_PRICE, 2.43)
-        self.assertEqual(constants.AVG_SPEED_MPH, 50)
+        self.assert_Equal(constants.MILES_PER_GALLON, 6.5)
+        self.assert_Equal(constants.GAS_PRICE, 2.43)
+        self.assert_Equal(constants.AVG_SPEED_MPH, 50)
     
     def test_cargo_constants(self):
         """Verify cargo constants from documentation"""
         constants = OrderProcessingConstants()
         
-        self.assertEqual(constants.MAX_WEIGHT_LBS, 9180)
-        self.assertEqual(constants.TOTAL_VOLUME_CUBIC_FEET, 1700)
-        self.assertEqual(constants.PALLETS_PER_TRUCK, 26.6)
-        self.assertEqual(constants.PALLET_COST_PER_MILE, 0.06376832579)
-        self.assertEqual(constants.PALLET_WEIGHT_LBS, 440)
-        self.assertEqual(constants.PALLET_VOLUME_CUBIC_FEET, 64)
+        self.assert_Equal(constants.MAX_WEIGHT_LBS, 9180)
+        self.assert_Equal(constants.TOTAL_VOLUME_CUBIC_FEET, 1700)
+        self.assert_Equal(constants.PALLETS_PER_TRUCK, 26.6)
+        self.assert_Equal(constants.PALLET_COST_PER_MILE, 0.06376832579)
+        self.assert_Equal(constants.PALLET_WEIGHT_LBS, 440)
+        self.assert_Equal(constants.PALLET_VOLUME_CUBIC_FEET, 64)
     
     def test_business_rule_constants(self):
         """Verify business rule constants"""
         constants = OrderProcessingConstants()
         
-        self.assertEqual(constants.MAX_PROXIMITY_KM, 1.0)
-        self.assertEqual(constants.STOP_TIME_MINUTES, 15)
-        self.assertEqual(constants.MAX_ROUTE_HOURS, 10.0)
+        self.assert_Equal(constants.MAX_PROXIMITY_KM, 1.0)
+        self.assert_Equal(constants.STOP_TIME_MINUTES, 15)
+        self.assert_Equal(constants.MAX_ROUTE_HOURS, 10.0)
 
 
 class TestProximityValidation(unittest.TestCase):
     """Test 1km proximity constraint validation using haversine distance"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         # Create test locations
@@ -107,9 +105,9 @@ class TestProximityValidation(unittest.TestCase):
         
         result = self.processor._validate_proximity_constraint(order, self.route)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_PROXIMITY)
-        self.assertIn("Pickup location too far", result.message)
-        self.assertGreater(result.details['pickup_distance_km'], 1.0)
+        self.assert_Equal(result.result, ValidationResult.INVALID_PROXIMITY)
+        self.assert_In("Pickup location too far", result.message)
+        self.assert_Greater(result.details['pickup_distance_km'], 1.0)
     
     def test_invalid_dropoff_proximity(self):
         """Test order with dropoff location too far from route"""
@@ -122,9 +120,9 @@ class TestProximityValidation(unittest.TestCase):
         
         result = self.processor._validate_proximity_constraint(order, self.route)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_PROXIMITY)
-        self.assertIn("Dropoff location too far", result.message)
-        self.assertGreater(result.details['dropoff_distance_km'], 1.0)
+        self.assert_Equal(result.result, ValidationResult.INVALID_PROXIMITY)
+        self.assert_In("Dropoff location too far", result.message)
+        self.assert_Greater(result.details['dropoff_distance_km'], 1.0)
     
     def test_missing_locations(self):
         """Test order with missing pickup or dropoff locations"""
@@ -137,8 +135,8 @@ class TestProximityValidation(unittest.TestCase):
         
         result = self.processor._validate_proximity_constraint(order, self.route)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_PROXIMITY)
-        self.assertIn("missing pickup or dropoff", result.message)
+        self.assert_Equal(result.result, ValidationResult.INVALID_PROXIMITY)
+        self.assert_In("missing pickup or dropoff", result.message)
     
     def test_empty_route_path(self):
         """Test validation with route that has no defined path"""
@@ -157,14 +155,14 @@ class TestProximityValidation(unittest.TestCase):
         
         result = self.processor._validate_proximity_constraint(order, empty_route)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_PROXIMITY)
-        self.assertIn("no defined path", result.message)
+        self.assert_Equal(result.result, ValidationResult.INVALID_PROXIMITY)
+        self.assert_In("no defined path", result.message)
 
 
 class TestCapacityValidation(unittest.TestCase):
     """Test capacity validation with volume (CBM) and weight (pounds)"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         # Create test truck with standard capacity
@@ -211,8 +209,8 @@ class TestCapacityValidation(unittest.TestCase):
         
         result = self.processor._validate_capacity_constraint(order, self.truck)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_CAPACITY)
-        self.assertIn("Insufficient volume capacity", result.message)
+        self.assert_Equal(result.result, ValidationResult.INVALID_CAPACITY)
+        self.assert_In("Insufficient volume capacity", result.message)
     
     def test_invalid_weight_capacity(self):
         """Test order that exceeds weight capacity"""
@@ -232,8 +230,8 @@ class TestCapacityValidation(unittest.TestCase):
         
         result = self.processor._validate_capacity_constraint(order, self.truck)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_WEIGHT)
-        self.assertIn("Insufficient weight capacity", result.message)
+        self.assert_Equal(result.result, ValidationResult.INVALID_WEIGHT)
+        self.assert_In("Insufficient weight capacity", result.message)
     
     def test_capacity_with_existing_cargo(self):
         """Test capacity validation with existing cargo in truck"""
@@ -255,13 +253,13 @@ class TestCapacityValidation(unittest.TestCase):
         
         result = self.processor._validate_capacity_constraint(order, self.truck)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INVALID_CAPACITY)
+        self.assert_Equal(result.result, ValidationResult.INVALID_CAPACITY)
 
 
 class TestTimeValidation(unittest.TestCase):
     """Test time calculation with 15-minute stops plus deviation time"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         # Create test route with known time
@@ -308,8 +306,8 @@ class TestTimeValidation(unittest.TestCase):
             result = self.processor._validate_time_constraint(self.order, long_route)
             # Adding 30 minutes (2 stops) + deviation should exceed 10 hours
             self.assertIsNotNone(result)
-            self.assertEqual(result.result, ValidationResult.INVALID_TIME)
-            self.assertIn("exceed maximum time", result.message)
+            self.assert_Equal(result.result, ValidationResult.INVALID_TIME)
+            self.assert_In("exceed maximum time", result.message)
     
     def test_time_calculation_components(self):
         """Test that time calculation includes all components"""
@@ -317,19 +315,19 @@ class TestTimeValidation(unittest.TestCase):
         
         if result:  # If validation failed, check the details
             details = result.details
-            self.assertIn('current_time_hours', details)
-            self.assertIn('additional_stop_time_hours', details)
-            self.assertIn('deviation_time_hours', details)
-            self.assertIn('new_total_time_hours', details)
+            self.assert_In('current_time_hours', details)
+            self.assert_In('additional_stop_time_hours', details)
+            self.assert_In('deviation_time_hours', details)
+            self.assert_In('new_total_time_hours', details)
             
             # Verify 15-minute stops are included (2 stops = 30 minutes = 0.5 hours)
-            self.assertEqual(details['additional_stop_time_hours'], 0.5)
+            self.assert_Equal(details['additional_stop_time_hours'], 0.5)
 
 
 class TestCargoCompatibility(unittest.TestCase):
     """Test cargo type compatibility validation"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         # Create truck with existing hazmat cargo
@@ -370,8 +368,8 @@ class TestCargoCompatibility(unittest.TestCase):
         
         result = self.processor._validate_cargo_compatibility(order, self.truck)
         self.assertIsNotNone(result)
-        self.assertEqual(result.result, ValidationResult.INCOMPATIBLE_CARGO)
-        self.assertIn("Incompatible cargo types", result.message)
+        self.assert_Equal(result.result, ValidationResult.INCOMPATIBLE_CARGO)
+        self.assert_In("Incompatible cargo types", result.message)
     
     def test_empty_cargo(self):
         """Test order with no cargo"""
@@ -388,7 +386,7 @@ class TestCargoCompatibility(unittest.TestCase):
 class TestOrderMetrics(unittest.TestCase):
     """Test order metrics calculation"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         self.truck = Truck(
@@ -433,7 +431,7 @@ class TestOrderMetrics(unittest.TestCase):
         ]
         
         for metric in expected_metrics:
-            self.assertIn(metric, metrics)
+            self.assert_In(metric, metrics)
             self.assertIsInstance(metrics[metric], (int, float))
     
     def test_unit_conversions(self):
@@ -456,7 +454,7 @@ class TestOrderMetrics(unittest.TestCase):
 class TestBatchProcessing(unittest.TestCase):
     """Test batch processing of multiple orders"""
     
-    def setUp(self):
+    def set_Up(self):
         self.processor = OrderProcessor()
         
         # Create test data
@@ -507,9 +505,9 @@ class TestBatchProcessing(unittest.TestCase):
         """Test processing multiple orders"""
         results = self.processor.process_order_batch(self.orders, self.routes, self.trucks)
         
-        self.assertEqual(len(results), 2)
-        self.assertIn(1, results)
-        self.assertIn(2, results)
+        self.assert_Equal(len(results), 2)
+        self.assert_In(1, results)
+        self.assert_In(2, results)
         
         for order_id, result in results.items():
             self.assertIsInstance(result, ProcessingResult)
@@ -528,7 +526,7 @@ class TestBatchProcessing(unittest.TestCase):
         }
         
         score = self.processor._calculate_efficiency_score(good_metrics)
-        self.assertGreater(score, 0)
+        self.assert_Greater(score, 0)
         
         # Test with metrics that should give a poor score
         poor_metrics = {
@@ -539,7 +537,7 @@ class TestBatchProcessing(unittest.TestCase):
         }
         
         poor_score = self.processor._calculate_efficiency_score(poor_metrics)
-        self.assertLess(poor_score, score)
+        self.assert_Less(poor_score, score)
 
 
 if __name__ == '__main__':

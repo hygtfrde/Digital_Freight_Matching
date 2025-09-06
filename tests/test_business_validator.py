@@ -11,7 +11,6 @@ Tests all validation methods against the 7 main business requirements:
 
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch
 
 from validation.business_validator import (
     BusinessValidator,
@@ -25,34 +24,34 @@ from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, Cargo
 class TestBusinessValidator(unittest.TestCase):
     """Test the BusinessValidator class initialization and basic functionality"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
     
     def test_validator_initialization(self):
         """Test that validator initializes correctly"""
         self.assertIsInstance(self.validator, BusinessValidator)
-        self.assertEqual(len(self.validator.validation_history), 0)
-        self.assertEqual(len(self.validator.performance_history), 0)
+        self.assert_Equal(len(self.validator.validation_history), 0)
+        self.assert_Equal(len(self.validator.performance_history), 0)
     
     def test_business_constants(self):
         """Test that business constants match requirements"""
-        self.assertEqual(self.validator.TARGET_DAILY_LOSS_REDUCTION, 388.15)
-        self.assertEqual(self.validator.MAX_PROXIMITY_KM, 1.0)
-        self.assertEqual(self.validator.MAX_TRUCK_VOLUME_M3, 48.0)
-        self.assertEqual(self.validator.MAX_TRUCK_WEIGHT_LBS, 9180.0)
-        self.assertEqual(self.validator.MAX_ROUTE_TIME_HOURS, 10.0)
-        self.assertEqual(self.validator.STOP_TIME_MINUTES, 15.0)
-        self.assertEqual(self.validator.REQUIRED_CONTRACT_ROUTES, 5)
+        self.assert_Equal(self.validator.TARGET_DAILY_LOSS_REDUCTION, 388.15)
+        self.assert_Equal(self.validator.MAX_PROXIMITY_KM, 1.0)
+        self.assert_Equal(self.validator.MAX_TRUCK_VOLUME_M3, 48.0)
+        self.assert_Equal(self.validator.MAX_TRUCK_WEIGHT_LBS, 9180.0)
+        self.assert_Equal(self.validator.MAX_ROUTE_TIME_HOURS, 10.0)
+        self.assert_Equal(self.validator.STOP_TIME_MINUTES, 15.0)
+        self.assert_Equal(self.validator.REQUIRED_CONTRACT_ROUTES, 5)
         
         expected_destinations = ["Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
-        self.assertEqual(self.validator.CONTRACT_DESTINATIONS, expected_destinations)
+        self.assert_Equal(self.validator.CONTRACT_DESTINATIONS, expected_destinations)
 
 
 class TestProfitabilityValidation(unittest.TestCase):
     """Test profitability requirement validation (Requirement 1.1)"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
         
@@ -115,13 +114,13 @@ class TestProfitabilityValidation(unittest.TestCase):
             baseline_daily_loss=388.15
         )
         
-        self.assertEqual(report.requirement_id, "1.1")
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertIn("successfully converted", report.details)
-        self.assertEqual(report.metrics["baseline_daily_loss"], 388.15)
-        self.assertEqual(report.metrics["current_daily_profit"], 250.0)
-        self.assertGreater(report.metrics["improvement_amount"], 0)
-        self.assertEqual(len(self.validator.validation_history), 1)
+        self.assert_Equal(report.requirement_id, "1.1")
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_In("successfully converted", report.details)
+        self.assert_Equal(report.metrics["baseline_daily_loss"], 388.15)
+        self.assert_Equal(report.metrics["current_daily_profit"], 250.0)
+        self.assert_Greater(report.metrics["improvement_amount"], 0)
+        self.assert_Equal(len(self.validator.validation_history), 1)
     
     def test_loss_making_system_validation(self):
         """Test validation when system is still making losses"""
@@ -131,10 +130,10 @@ class TestProfitabilityValidation(unittest.TestCase):
         )
         
         # Loss making routes still show improvement over baseline, so should be WARNING
-        self.assertEqual(report.status, ValidationStatus.WARNING)
-        self.assertIn("reduced daily loss", report.details)
-        self.assertEqual(report.metrics["current_daily_profit"], -300.0)
-        self.assertGreater(report.metrics["improvement_amount"], 0)  # -300 is better than -388.15
+        self.assert_Equal(report.status, ValidationStatus.WARNING)
+        self.assert_In("reduced daily loss", report.details)
+        self.assert_Equal(report.metrics["current_daily_profit"], -300.0)
+        self.assert_Greater(report.metrics["improvement_amount"], 0)  # -300 is better than -388.15
     
     def test_improved_but_not_profitable_validation(self):
         """Test validation when system improved but not yet profitable"""
@@ -148,19 +147,19 @@ class TestProfitabilityValidation(unittest.TestCase):
             baseline_daily_loss=388.15
         )
         
-        self.assertEqual(report.status, ValidationStatus.WARNING)
-        self.assertIn("reduced daily loss", report.details)
-        self.assertGreater(report.metrics["improvement_amount"], 0)
-        self.assertLess(report.metrics["current_daily_profit"], 0)
+        self.assert_Equal(report.status, ValidationStatus.WARNING)
+        self.assert_In("reduced daily loss", report.details)
+        self.assert_Greater(report.metrics["improvement_amount"], 0)
+        self.assert_Less(report.metrics["current_daily_profit"], 0)
     
     def test_profitability_validation_with_empty_routes(self):
         """Test validation with empty routes list"""
         report = self.validator.validate_profitability_requirements([], 388.15)
         
         # Empty routes with baseline loss should be WARNING (break-even from loss)
-        self.assertEqual(report.status, ValidationStatus.WARNING)
-        self.assertEqual(report.metrics["current_daily_profit"], 0.0)
-        self.assertEqual(report.metrics["routes_analyzed"], 0)
+        self.assert_Equal(report.status, ValidationStatus.WARNING)
+        self.assert_Equal(report.metrics["current_daily_profit"], 0.0)
+        self.assert_Equal(report.metrics["routes_analyzed"], 0)
     
     def test_profitability_validation_error_handling(self):
         """Test validation handles errors gracefully"""
@@ -170,14 +169,14 @@ class TestProfitabilityValidation(unittest.TestCase):
         
         report = self.validator.validate_profitability_requirements(invalid_routes, 388.15)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertIn("Validation failed due to error", report.details)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_In("Validation failed due to error", report.details)
 
 
 class TestProximityValidation(unittest.TestCase):
     """Test proximity constraint validation (Requirement 1.2)"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
         
@@ -223,11 +222,11 @@ class TestProximityValidation(unittest.TestCase):
         
         report = self.validator.validate_proximity_constraint(orders, routes)
         
-        self.assertEqual(report.requirement_id, "1.2")
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 100.0)
-        self.assertEqual(report.metrics["violations_count"], 0)
-        self.assertEqual(report.metrics["compliant_orders"], 1)
+        self.assert_Equal(report.requirement_id, "1.2")
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Equal(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.metrics["compliant_orders"], 1)
     
     def test_non_compliant_proximity_validation(self):
         """Test validation with orders that violate proximity constraint"""
@@ -236,10 +235,10 @@ class TestProximityValidation(unittest.TestCase):
         
         report = self.validator.validate_proximity_constraint(orders, routes)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 0.0)
-        self.assertEqual(report.metrics["violations_count"], 1)
-        self.assertEqual(report.metrics["compliant_orders"], 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 0.0)
+        self.assert_Equal(report.metrics["violations_count"], 1)
+        self.assert_Equal(report.metrics["compliant_orders"], 0)
     
     def test_mixed_proximity_validation(self):
         """Test validation with mix of compliant and non-compliant orders"""
@@ -248,10 +247,10 @@ class TestProximityValidation(unittest.TestCase):
         
         report = self.validator.validate_proximity_constraint(orders, routes)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 50.0)
-        self.assertEqual(report.metrics["violations_count"], 1)
-        self.assertEqual(report.metrics["compliant_orders"], 1)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 50.0)
+        self.assert_Equal(report.metrics["violations_count"], 1)
+        self.assert_Equal(report.metrics["compliant_orders"], 1)
     
     def test_proximity_validation_with_missing_locations(self):
         """Test validation with orders missing pickup or dropoff locations"""
@@ -269,9 +268,9 @@ class TestProximityValidation(unittest.TestCase):
         
         report = self.validator.validate_proximity_constraint(orders, routes)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 0.0)
-        self.assertGreater(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 0.0)
+        self.assert_Greater(report.metrics["violations_count"], 0)
     
     def test_proximity_validation_with_empty_route_path(self):
         """Test validation with route that has no path defined"""
@@ -288,21 +287,21 @@ class TestProximityValidation(unittest.TestCase):
         
         report = self.validator.validate_proximity_constraint(orders, routes)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 0.0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 0.0)
     
     def test_proximity_validation_with_empty_inputs(self):
         """Test validation with empty orders and routes"""
         report = self.validator.validate_proximity_constraint([], [])
         
-        self.assertEqual(report.status, ValidationStatus.PASSED)  # No orders to violate
-        self.assertEqual(report.metrics["total_orders"], 0)
+        self.assert_Equal(report.status, ValidationStatus.PASSED)  # No orders to violate
+        self.assert_Equal(report.metrics["total_orders"], 0)
 
 
 class TestCapacityValidation(unittest.TestCase):
     """Test capacity constraint validation (Requirement 1.3)"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
         
@@ -401,10 +400,10 @@ class TestCapacityValidation(unittest.TestCase):
         
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
-        self.assertEqual(report.requirement_id, "1.3")
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["violations_count"], 0)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Equal(report.requirement_id, "1.3")
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 100.0)
     
     def test_volume_capacity_violation(self):
         """Test validation with volume capacity violations"""
@@ -413,9 +412,9 @@ class TestCapacityValidation(unittest.TestCase):
         
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertGreater(report.metrics["violations_count"], 0)
-        self.assertIn("violations detected", report.details)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Greater(report.metrics["violations_count"], 0)
+        self.assert_In("violations detected", report.details)
     
     def test_weight_capacity_violation(self):
         """Test validation with weight capacity violations"""
@@ -424,9 +423,9 @@ class TestCapacityValidation(unittest.TestCase):
         
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertGreater(report.metrics["violations_count"], 0)
-        self.assertIn("violations detected", report.details)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Greater(report.metrics["violations_count"], 0)
+        self.assert_In("violations detected", report.details)
     
     def test_truck_capacity_limit_violation(self):
         """Test validation with truck that exceeds capacity limits"""
@@ -435,8 +434,8 @@ class TestCapacityValidation(unittest.TestCase):
         
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertGreater(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Greater(report.metrics["violations_count"], 0)
     
     def test_capacity_with_existing_cargo(self):
         """Test capacity validation with trucks that have existing cargo"""
@@ -446,7 +445,7 @@ class TestCapacityValidation(unittest.TestCase):
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
         # Should pass since small cargo is within limits
-        self.assertEqual(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
     
     def test_mixed_capacity_scenarios(self):
         """Test validation with mix of compliant and non-compliant scenarios"""
@@ -455,16 +454,16 @@ class TestCapacityValidation(unittest.TestCase):
         
         report = self.validator.validate_capacity_constraints(orders, trucks)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertGreater(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Greater(report.metrics["violations_count"], 0)
         # Should have violations even if compliance rate calculation has issues
-        self.assertGreater(report.metrics["violations_count"], 0)
+        self.assert_Greater(report.metrics["violations_count"], 0)
 
 
 class TestTimeValidation(unittest.TestCase):
     """Test time constraint validation (Requirement 1.4)"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
         
@@ -514,10 +513,10 @@ class TestTimeValidation(unittest.TestCase):
         
         report = self.validator.validate_time_constraints(routes)
         
-        self.assertEqual(report.requirement_id, "1.4")
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["violations_count"], 0)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Equal(report.requirement_id, "1.4")
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["violations_count"], 0)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 100.0)
     
     def test_time_constraint_violation(self):
         """Test validation with routes that exceed time limit"""
@@ -543,9 +542,9 @@ class TestTimeValidation(unittest.TestCase):
         report = self.validator.validate_time_constraints(routes)
         
         # Should exceed 10 hour limit due to distance + many stops
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertGreater(report.metrics["violations_count"], 0)
-        self.assertLess(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Greater(report.metrics["violations_count"], 0)
+        self.assert_Less(report.metrics["compliance_rate_percent"], 100.0)
     
     def test_time_calculation_includes_stops(self):
         """Test that time calculation includes 15-minute stops"""
@@ -556,15 +555,15 @@ class TestTimeValidation(unittest.TestCase):
         
         # Verify stop time is calculated correctly
         expected_stop_time = len(self.short_route.orders) * 2 * (15.0 / 60.0)  # 0.5 hours
-        self.assertEqual(expected_stop_time, 0.5)
+        self.assert_Equal(expected_stop_time, 0.5)
     
     def test_empty_routes_validation(self):
         """Test validation with empty routes list"""
         report = self.validator.validate_time_constraints([])
         
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["total_routes"], 0)
-        self.assertEqual(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["total_routes"], 0)
+        self.assert_Equal(report.metrics["compliance_rate_percent"], 100.0)
     
     def test_mixed_time_scenarios(self):
         """Test validation with mix of compliant and non-compliant routes"""
@@ -589,15 +588,15 @@ class TestTimeValidation(unittest.TestCase):
         report = self.validator.validate_time_constraints(routes)
         
         # Should have some violations but not all routes
-        self.assertGreater(report.metrics["violations_count"], 0)
-        self.assertLess(report.metrics["compliance_rate_percent"], 100.0)
-        self.assertGreater(report.metrics["compliance_rate_percent"], 0.0)
+        self.assert_Greater(report.metrics["violations_count"], 0)
+        self.assert_Less(report.metrics["compliance_rate_percent"], 100.0)
+        self.assert_Greater(report.metrics["compliance_rate_percent"], 0.0)
 
 
 class TestContractCompliance(unittest.TestCase):
     """Test contract compliance validation (Requirement 1.5)"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test fixtures"""
         self.validator = BusinessValidator()
         
@@ -626,48 +625,48 @@ class TestContractCompliance(unittest.TestCase):
         """Test validation with exactly 5 contract routes"""
         report = self.validator.validate_contract_compliance(self.contract_routes)
         
-        self.assertEqual(report.requirement_id, "1.5")
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["contract_routes_preserved"], 5)
-        self.assertEqual(report.metrics["missing_routes_count"], 0)
-        self.assertIn("All 5 contract routes are preserved", report.details)
+        self.assert_Equal(report.requirement_id, "1.5")
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["contract_routes_preserved"], 5)
+        self.assert_Equal(report.metrics["missing_routes_count"], 0)
+        self.assert_In("All 5 contract routes are preserved", report.details)
     
     def test_insufficient_routes_validation(self):
         """Test validation with fewer than 5 routes"""
         report = self.validator.validate_contract_compliance(self.insufficient_routes)
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["contract_routes_preserved"], 3)
-        self.assertIn("Only 3 routes found", report.details)
-        self.assertGreater(len(report.recommendations), 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["contract_routes_preserved"], 3)
+        self.assert_In("Only 3 routes found", report.details)
+        self.assert_Greater(len(report.recommendations), 0)
     
     def test_excess_routes_validation(self):
         """Test validation with more than 5 routes (should still pass)"""
         report = self.validator.validate_contract_compliance(self.excess_routes)
         
-        self.assertEqual(report.status, ValidationStatus.PASSED)
-        self.assertEqual(report.metrics["contract_routes_preserved"], 5)
-        self.assertEqual(report.metrics["current_routes_count"], 7)
+        self.assert_Equal(report.status, ValidationStatus.PASSED)
+        self.assert_Equal(report.metrics["contract_routes_preserved"], 5)
+        self.assert_Equal(report.metrics["current_routes_count"], 7)
     
     def test_empty_routes_validation(self):
         """Test validation with no routes"""
         report = self.validator.validate_contract_compliance([])
         
-        self.assertEqual(report.status, ValidationStatus.FAILED)
-        self.assertEqual(report.metrics["contract_routes_preserved"], 0)
-        self.assertEqual(report.metrics["current_routes_count"], 0)
+        self.assert_Equal(report.status, ValidationStatus.FAILED)
+        self.assert_Equal(report.metrics["contract_routes_preserved"], 0)
+        self.assert_Equal(report.metrics["current_routes_count"], 0)
     
     def test_contract_destinations_constant(self):
         """Test that contract destinations are correctly defined"""
         expected_destinations = ["Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
-        self.assertEqual(self.validator.CONTRACT_DESTINATIONS, expected_destinations)
-        self.assertEqual(len(self.validator.CONTRACT_DESTINATIONS), 5)
+        self.assert_Equal(self.validator.CONTRACT_DESTINATIONS, expected_destinations)
+        self.assert_Equal(len(self.validator.CONTRACT_DESTINATIONS), 5)
 
 
 class TestValidationIntegration(unittest.TestCase):
     """Test integrated validation functionality"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up comprehensive test fixtures"""
         self.validator = BusinessValidator()
         
@@ -723,12 +722,12 @@ class TestValidationIntegration(unittest.TestCase):
             baseline_daily_loss=388.15
         )
         
-        self.assertEqual(len(reports), 5)  # Should have 5 validation reports
+        self.assert_Equal(len(reports), 5)  # Should have 5 validation reports
         
         # Check that all requirement IDs are present
         requirement_ids = [r.requirement_id for r in reports]
         expected_ids = ["1.1", "1.2", "1.3", "1.4", "1.5"]
-        self.assertEqual(sorted(requirement_ids), sorted(expected_ids))
+        self.assert_Equal(sorted(requirement_ids), sorted(expected_ids))
         
         # Check that all reports have required fields
         for report in reports:
@@ -755,12 +754,12 @@ class TestValidationIntegration(unittest.TestCase):
         ]
         
         for key in required_keys:
-            self.assertIn(key, summary)
+            self.assert_In(key, summary)
         
-        self.assertEqual(summary["total_requirements"], 5)
+        self.assert_Equal(summary["total_requirements"], 5)
         self.assertIsInstance(summary["pass_rate_percent"], float)
         self.assertIsInstance(summary["requirements_details"], list)
-        self.assertEqual(len(summary["requirements_details"]), 5)
+        self.assert_Equal(len(summary["requirements_details"]), 5)
     
     def test_validation_history_tracking(self):
         """Test that validation history is properly tracked"""
@@ -770,13 +769,13 @@ class TestValidationIntegration(unittest.TestCase):
         self.validator.validate_profitability_requirements(self.routes)
         
         # Check history was updated
-        self.assertEqual(len(self.validator.validation_history), initial_count + 1)
+        self.assert_Equal(len(self.validator.validation_history), initial_count + 1)
         
         # Run all validations
         self.validator.validate_all_requirements(self.orders, self.routes, self.trucks)
         
         # Check history includes all validations
-        self.assertEqual(len(self.validator.validation_history), initial_count + 6)  # 1 + 5
+        self.assert_Equal(len(self.validator.validation_history), initial_count + 6)  # 1 + 5
     
     def test_error_handling_in_validation(self):
         """Test that validation handles errors gracefully"""
@@ -796,16 +795,16 @@ class TestValidationIntegration(unittest.TestCase):
         )
         
         # Should still return 5 reports, but with FAILED status
-        self.assertEqual(len(reports), 5)
+        self.assert_Equal(len(reports), 5)
         
         # Most reports should indicate failure due to errors
         # Note: Contract compliance might not fail if it just counts routes
         failed_reports = [r for r in reports if r.status == ValidationStatus.FAILED]
-        self.assertGreater(len(failed_reports), 0)  # At least some should fail
+        self.assert_Greater(len(failed_reports), 0)  # At least some should fail
         
         # Check that error reports contain error information
         error_reports = [r for r in reports if "error" in r.details.lower()]
-        self.assertGreater(len(error_reports), 0)  # At least some should mention errors
+        self.assert_Greater(len(error_reports), 0)  # At least some should mention errors
 
 
 if __name__ == '__main__':

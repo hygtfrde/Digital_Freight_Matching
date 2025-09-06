@@ -7,7 +7,6 @@ and fallback to Haversine calculations.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-import math
 
 from services.route_calculation import (
     RouteCalculationService, DistanceResult, RouteResult,

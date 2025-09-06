@@ -16,12 +16,7 @@ import unittest
 import time
 import os
 import sys
-import tempfile
-import shutil
 import subprocess
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-from unittest.mock import Mock, patch
 from sqlmodel import Session, select
 try:
     import requests
@@ -138,7 +133,7 @@ class IntegrationTestSuite(unittest.TestCase):
             cls.test_truck_ids = [t.id for t in trucks]
             cls.test_location_ids = [atlanta.id, savannah.id, augusta.id, columbus.id, albany.id]
     
-    def setUp(self):
+    def set_Up(self):
         """Set up for each individual test"""
         self.session = Session(engine)
         self.order_processor = OrderProcessor()
@@ -148,7 +143,7 @@ class IntegrationTestSuite(unittest.TestCase):
         # Performance tracking
         self.test_start_time = time.time()
     
-    def tearDown(self):
+    def tear_Down(self):
         """Clean up after each test"""
         self.session.close()
         
@@ -209,8 +204,8 @@ class IntegrationTestSuite(unittest.TestCase):
         routes = self.session.exec(select(Route)).all()
         trucks = self.session.exec(select(Truck)).all()
         
-        self.assertGreater(len(routes), 0, "No routes available for testing")
-        self.assertGreater(len(trucks), 0, "No trucks available for testing")
+        self.assert_Greater(len(routes), 0, "No routes available for testing")
+        self.assert_Greater(len(trucks), 0, "No trucks available for testing")
         
         # Step 3: Process order through validation
         route = routes[0]  # Use first route (Atlanta to Savannah)
@@ -227,13 +222,13 @@ class IntegrationTestSuite(unittest.TestCase):
         # Step 5: Check business logic compliance
         if result.is_valid:
             # Order should be valid for nearby locations with sufficient capacity
-            self.assertTrue(result.is_valid, "Valid order should pass validation")
-            self.assertEqual(len(result.errors), 0, "Valid order should have no errors")
+            self.assert_True(result.is_valid, "Valid order should pass validation")
+            self.assert_Equal(len(result.errors), 0, "Valid order should have no errors")
             
             # Verify metrics are calculated
-            self.assertIn('order_volume_m3', result.metrics)
-            self.assertIn('order_weight_kg', result.metrics)
-            self.assertIn('volume_utilization_percent', result.metrics)
+            self.assert_In('order_volume_m3', result.metrics)
+            self.assert_In('order_weight_kg', result.metrics)
+            self.assert_In('volume_utilization_percent', result.metrics)
             
             # Check capacity utilization is reasonable
             volume_util = result.metrics['volume_utilization_percent']
@@ -249,14 +244,14 @@ class IntegrationTestSuite(unittest.TestCase):
             additional_revenue = 50.0  # Assumed revenue per order
             route.profitability += additional_revenue
             
-            self.assertGreater(route.profitability, original_profit, 
+            self.assert_Greater(route.profitability, original_profit, 
                              "Adding order should improve profitability")
         
         # Step 7: Verify database consistency
         self.session.refresh(order)
         self.assertIsNotNone(order.id, "Order should be persisted with ID")
-        self.assertEqual(len(order.cargo), 1, "Order should have one cargo load")
-        self.assertEqual(len(order.cargo[0].packages), 2, "Cargo should have two packages")
+        self.assert_Equal(len(order.cargo), 1, "Order should have one cargo load")
+        self.assert_Equal(len(order.cargo[0].packages), 2, "Cargo should have two packages")
     
     def test_profitability_calculations_accuracy(self):
         """
@@ -298,14 +293,14 @@ class IntegrationTestSuite(unittest.TestCase):
             routes, baseline_daily_loss=expected_baseline
         )
         
-        self.assertEqual(validation_report.requirement_id, "1.1")
-        self.assertIn(validation_report.status, [ValidationStatus.PASSED, ValidationStatus.WARNING])
-        self.assertIn("baseline_daily_loss", validation_report.metrics)
-        self.assertIn("current_daily_profit", validation_report.metrics)
-        self.assertIn("improvement_amount", validation_report.metrics)
+        self.assert_Equal(validation_report.requirement_id, "1.1")
+        self.assert_In(validation_report.status, [ValidationStatus.PASSED, ValidationStatus.WARNING])
+        self.assert_In("baseline_daily_loss", validation_report.metrics)
+        self.assert_In("current_daily_profit", validation_report.metrics)
+        self.assert_In("improvement_amount", validation_report.metrics)
         
         # Verify metrics accuracy
-        self.assertEqual(validation_report.metrics["baseline_daily_loss"], expected_baseline)
+        self.assert_Equal(validation_report.metrics["baseline_daily_loss"], expected_baseline)
     
     def test_constraint_enforcement_comprehensive(self):
         """
@@ -341,9 +336,9 @@ class IntegrationTestSuite(unittest.TestCase):
         result = self.order_processor.validate_order_for_route(far_order, route, truck)
         
         # Should fail proximity constraint
-        self.assertFalse(result.is_valid, "Order with far pickup should fail proximity constraint")
+        self.assert_False(result.is_valid, "Order with far pickup should fail proximity constraint")
         proximity_errors = [e for e in result.errors if e.result == ValidationResult.INVALID_PROXIMITY]
-        self.assertGreater(len(proximity_errors), 0, "Should have proximity constraint violations")
+        self.assert_Greater(len(proximity_errors), 0, "Should have proximity constraint violations")
         
         # Test 2: Capacity constraint (48m³, 9180 lbs limits)
         # Create order that exceeds volume capacity
@@ -374,9 +369,9 @@ class IntegrationTestSuite(unittest.TestCase):
         result = self.order_processor.validate_order_for_route(oversized_order, route, truck)
         
         # Should fail capacity constraint
-        self.assertFalse(result.is_valid, "Oversized order should fail capacity constraint")
+        self.assert_False(result.is_valid, "Oversized order should fail capacity constraint")
         capacity_errors = [e for e in result.errors if e.result == ValidationResult.INVALID_CAPACITY]
-        self.assertGreater(len(capacity_errors), 0, "Should have capacity constraint violations")
+        self.assert_Greater(len(capacity_errors), 0, "Should have capacity constraint violations")
         
         # Test 3: Weight constraint (9180 lbs limit)
         overweight_order = Order(
@@ -401,9 +396,9 @@ class IntegrationTestSuite(unittest.TestCase):
         result = self.order_processor.validate_order_for_route(overweight_order, route, truck)
         
         # Should fail weight constraint
-        self.assertFalse(result.is_valid, "Overweight order should fail weight constraint")
+        self.assert_False(result.is_valid, "Overweight order should fail weight constraint")
         weight_errors = [e for e in result.errors if e.result == ValidationResult.INVALID_WEIGHT]
-        self.assertGreater(len(weight_errors), 0, "Should have weight constraint violations")
+        self.assert_Greater(len(weight_errors), 0, "Should have weight constraint violations")
         
         # Test 4: Cargo compatibility constraint
         # Create order with incompatible cargo types
@@ -446,7 +441,7 @@ class IntegrationTestSuite(unittest.TestCase):
         if not result.is_valid:
             cargo_errors = [e for e in result.errors if e.result == ValidationResult.INCOMPATIBLE_CARGO]
             if len(cargo_errors) > 0:
-                self.assertGreater(len(cargo_errors), 0, "Should detect cargo incompatibility")
+                self.assert_Greater(len(cargo_errors), 0, "Should detect cargo incompatibility")
     
     def test_data_integrity_validation(self):
         """
@@ -496,7 +491,7 @@ class IntegrationTestSuite(unittest.TestCase):
             # Verify packages belong to cargo
             packages = self.session.exec(select(Package).where(Package.cargo_id == cargo.id)).all()
             for package in packages:
-                self.assertEqual(package.cargo_id, cargo.id, "Package must reference correct cargo")
+                self.assert_Equal(package.cargo_id, cargo.id, "Package must reference correct cargo")
         
         # Test 3: Business rule consistency
         # Verify truck capacity constraints are not violated in existing data
@@ -536,7 +531,7 @@ class IntegrationTestSuite(unittest.TestCase):
         
         # Verify order count unchanged after failed transaction
         final_order_count = len(self.session.exec(select(Order)).all())
-        self.assertEqual(original_order_count, final_order_count,
+        self.assert_Equal(original_order_count, final_order_count,
                         "Failed transaction should not change order count")
         
         # Test 5: Database manager integrity checks
@@ -545,7 +540,7 @@ class IntegrationTestSuite(unittest.TestCase):
         # Verify all expected entities exist
         expected_entities = ['clients', 'locations', 'trucks', 'routes', 'orders', 'cargo', 'packages']
         for entity in expected_entities:
-            self.assertIn(entity, integrity_counts, f"Integrity check should include {entity}")
+            self.assert_In(entity, integrity_counts, f"Integrity check should include {entity}")
             self.assertGreaterEqual(integrity_counts[entity], 0, f"{entity} count should be non-negative")
     
     def test_api_endpoints_integration(self):
@@ -555,7 +550,7 @@ class IntegrationTestSuite(unittest.TestCase):
         Validates that API endpoints work correctly and return expected data formats.
         """
         if not REQUESTS_AVAILABLE:
-            self.skipTest("requests module not available for API testing")
+            self.skip_Test("requests module not available for API testing")
         
         # Note: This test assumes the FastAPI server is running
         # In a full integration environment, we would start the server programmatically
@@ -566,55 +561,55 @@ class IntegrationTestSuite(unittest.TestCase):
             # Test 1: Root endpoint
             response = requests.get(f"{base_url}/", timeout=5)
             if response.status_code == 200:
-                self.assertIn("Digital Freight Matcher", response.text)
+                self.assert_In("Digital Freight Matcher", response.text)
             else:
-                self.skipTest("FastAPI server not available for integration testing")
+                self.skip_Test("FastAPI server not available for integration testing")
         
         except requests.exceptions.RequestException:
-            self.skipTest("FastAPI server not available for integration testing")
+            self.skip_Test("FastAPI server not available for integration testing")
         
         # If server is available, continue with API tests
         try:
             # Test 2: Clients endpoint
             response = requests.get(f"{base_url}/clients", timeout=5)
-            self.assertEqual(response.status_code, 200)
+            self.assert_Equal(response.status_code, 200)
             
             clients_data = response.json()
             self.assertIsInstance(clients_data, list)
             
             if len(clients_data) > 0:
                 client = clients_data[0]
-                self.assertIn("id", client)
-                self.assertIn("name", client)
-                self.assertIn("created_at", client)
+                self.assert_In("id", client)
+                self.assert_In("name", client)
+                self.assert_In("created_at", client)
             
             # Test 3: Routes endpoint
             response = requests.get(f"{base_url}/routes", timeout=5)
-            self.assertEqual(response.status_code, 200)
+            self.assert_Equal(response.status_code, 200)
             
             routes_data = response.json()
             self.assertIsInstance(routes_data, list)
             
             if len(routes_data) > 0:
                 route = routes_data[0]
-                self.assertIn("id", route)
-                self.assertIn("profitability", route)
-                self.assertIn("truck_id", route)
+                self.assert_In("id", route)
+                self.assert_In("profitability", route)
+                self.assert_In("truck_id", route)
             
             # Test 4: Analytics endpoint
             response = requests.get(f"{base_url}/analytics/summary", timeout=5)
-            self.assertEqual(response.status_code, 200)
+            self.assert_Equal(response.status_code, 200)
             
             analytics_data = response.json()
-            self.assertIn("entities", analytics_data)
-            self.assertIn("financial", analytics_data)
-            self.assertIn("capacity", analytics_data)
+            self.assert_In("entities", analytics_data)
+            self.assert_In("financial", analytics_data)
+            self.assert_In("capacity", analytics_data)
             
             # Verify financial data matches business requirements
             financial = analytics_data["financial"]
-            self.assertIn("total_daily_loss", financial)
-            self.assertIn("target_daily_loss", financial)
-            self.assertEqual(financial["target_daily_loss"], -388.15)
+            self.assert_In("total_daily_loss", financial)
+            self.assert_In("target_daily_loss", financial)
+            self.assert_Equal(financial["target_daily_loss"], -388.15)
             
         except requests.exceptions.RequestException as e:
             self.fail(f"API integration test failed: {e}")
@@ -637,12 +632,12 @@ class IntegrationTestSuite(unittest.TestCase):
             )
             
             # Should complete successfully or with expected error
-            self.assertIn(result.returncode, [0, 1], "DB manager should run without crashing")
+            self.assert_In(result.returncode, [0, 1], "DB manager should run without crashing")
             
             if result.returncode == 0:
                 # Verify output contains expected information
                 output = result.stdout.lower()
-                self.assertTrue(
+                self.assert_True(
                     any(word in output for word in ["clients", "routes", "trucks", "orders"]),
                     "DB manager output should contain entity information"
                 )
@@ -650,7 +645,7 @@ class IntegrationTestSuite(unittest.TestCase):
         except subprocess.TimeoutExpired:
             self.fail("Database manager CLI command timed out")
         except FileNotFoundError:
-            self.skipTest("Database manager script not found")
+            self.skip_Test("Database manager script not found")
         
         # Test 2: Order processor CLI (if available)
         try:
@@ -663,7 +658,7 @@ class IntegrationTestSuite(unittest.TestCase):
             )
             
             if result.returncode == 0:
-                self.assertIn("usage", result.stdout.lower())
+                self.assert_In("usage", result.stdout.lower())
         
         except (subprocess.TimeoutExpired, FileNotFoundError):
             # CLI help not available - skip this test
@@ -680,7 +675,7 @@ class IntegrationTestSuite(unittest.TestCase):
             )
             
             # Should complete without crashing
-            self.assertIn(result.returncode, [0, 1], "DFM demo should run without crashing")
+            self.assert_In(result.returncode, [0, 1], "DFM demo should run without crashing")
         
         except subprocess.TimeoutExpired:
             self.fail("DFM demo timed out")
@@ -743,7 +738,7 @@ class IntegrationTestSuite(unittest.TestCase):
         single_order_time = time.time() - start_time
         
         # Performance assertion: <5 seconds per order
-        self.assertLess(single_order_time, 5.0,
+        self.assert_Less(single_order_time, 5.0,
                        f"Single order processing took {single_order_time:.2f}s, should be <5s")
         
         # Test 2: Batch order processing performance
@@ -756,12 +751,12 @@ class IntegrationTestSuite(unittest.TestCase):
         batch_processing_time = time.time() - start_time
         
         # Verify all orders were processed
-        self.assertEqual(len(batch_results), len(test_orders),
+        self.assert_Equal(len(batch_results), len(test_orders),
                         "All orders should be processed in batch")
         
         # Performance assertion: batch should be efficient
         avg_time_per_order = batch_processing_time / len(test_orders)
-        self.assertLess(avg_time_per_order, 5.0,
+        self.assert_Less(avg_time_per_order, 5.0,
                        f"Average batch processing time {avg_time_per_order:.2f}s per order should be <5s")
         
         # Test 3: Business validation performance
@@ -774,11 +769,11 @@ class IntegrationTestSuite(unittest.TestCase):
         validation_time = time.time() - start_time
         
         # Performance assertion: validation should be fast
-        self.assertLess(validation_time, 5.0,
+        self.assert_Less(validation_time, 5.0,
                        f"Business validation took {validation_time:.2f}s, should be <5s")
         
         # Verify validation completed successfully
-        self.assertEqual(len(validation_reports), 5,
+        self.assert_Equal(len(validation_reports), 5,
                         "Should have 5 validation reports (one per requirement)")
         
         # Test 4: Database operation performance
@@ -795,7 +790,7 @@ class IntegrationTestSuite(unittest.TestCase):
         query_time = time.time() - start_time
         
         # Performance assertion: database queries should be fast
-        self.assertLess(query_time, 2.0,
+        self.assert_Less(query_time, 2.0,
                        f"Complex database query took {query_time:.2f}s, should be <2s")
         
         # Verify query returned results
@@ -832,7 +827,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("INTEGRATION TEST SUMMARY")
     print("=" * 80)
-    print(f"Tests run: {result.testsRun}")
+    print(f"Tests run: {result.tests_Run}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")
     print(f"Skipped: {len(result.skipped)}")
@@ -848,4 +843,4 @@ if __name__ == "__main__":
             print(f"- {test}: {traceback}")
     
     # Exit with appropriate code
-    sys.exit(0 if result.wasSuccessful() else 1)
+    sys.exit(0 if result.was_Successful() else 1)

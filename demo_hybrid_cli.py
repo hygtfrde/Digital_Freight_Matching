@@ -5,7 +5,6 @@ Shows both direct database and API modes working
 """
 
 from data_service import create_data_service
-import time
 
 def demo_both_modes():
     print("🚛 Digital Freight Matching - Hybrid Architecture Demo")
@@ -60,11 +59,11 @@ def demo_both_modes():
     print("  python cli_dashboard.py --mode=api --api-url=http://localhost:8000")
     print("  python cli_dashboard.py --environment=production")
     
-    print("\nEnvironment Variables:")
+    print("\n_Environment Variables:")
     print("  export DFM_DATA_MODE=api")
     print("  export DFM_API_URL=http://api.company.com")
     
-    print("\nConfig File: config/settings.yaml")
+    print("\n_Config File: config/settings.yaml")
     print("  Supports development/production environment overrides")
     
     print("\n✨ Hybrid architecture successfully implemented!")
