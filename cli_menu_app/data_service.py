@@ -25,7 +25,7 @@ if app_dir not in sys.path:
     sys.path.insert(0, app_dir)
 
 try:
-    from app.database import (
+    from database import (
         engine, create_tables, get_session,
         CargoType, Location, Package, Cargo, Order, Truck, Route, Client
     )
