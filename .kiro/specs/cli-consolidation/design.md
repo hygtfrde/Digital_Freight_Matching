@@ -92,11 +92,6 @@ class OrderProcessor:
     def process_order_request(self, order_data: dict) -> MatchResult
 ```
 
-### 4. Route Optimizer (`route_optimizer.py`)
-
-**Purpose**: Route profitability and optimization
-**Extends**: Existing `PricingService` from `dfm.py`
-
 **Key Methods**:
 ```python
 class RouteOptimizer:

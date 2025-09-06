@@ -170,7 +170,7 @@ Create `RouteCalculationService` with basic OSMnx integration and fallback mecha
 Update `Location` and `Route` models to use the new service while maintaining backward compatibility.
 
 ### Phase 3: System Integration
-Update `CriteriaMatcher`, `PricingService`, and `OrderProcessor` to use enhanced route calculations.
+Update `OrderProcessor` to use enhanced route calculations.
 
 ### Phase 4: Performance Optimization
 Implement caching, batch processing, and performance monitoring.
