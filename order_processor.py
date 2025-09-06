@@ -145,7 +145,7 @@ class OrderProcessor:
 
         # Get route path points
         route_points = []
-        if route.path:
+        if hasattr(route, 'path') and route.path:
             route_points = route.path
         elif route.location_origin and route.location_destiny:
             route_points = [route.location_origin, route.location_destiny]
@@ -312,7 +312,7 @@ class OrderProcessor:
         """
         Calculate additional distance caused by adding order to route
         """
-        if not route.path or len(route.path) < 2:
+        if not hasattr(route, 'path') or not route.path or len(route.path) < 2:
             return 0.0
 
         # Simple approximation: distance from route endpoints to order locations
