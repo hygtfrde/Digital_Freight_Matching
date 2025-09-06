@@ -7,15 +7,10 @@ including the <5 second order processing target and scalability testing.
 
 import unittest
 import time
-import threading
-import concurrent.futures
-from typing import List, Dict, Any
-from sqlmodel import Session, select
 
 from tests.integration.test_integration_suite import IntegrationTestSuite
 from app.database import Order, Route, Truck, Location, Cargo, Package, CargoType
 from order_processor import OrderProcessor
-from validation.business_validator import BusinessValidator
 
 
 class PerformanceValidationTests(IntegrationTestSuite):
@@ -67,7 +62,7 @@ class PerformanceValidationTests(IntegrationTestSuite):
         processing_time = time.time() - start_time
         
         # Performance assertion
-        self.assertLess(processing_time, 5.0,
+        self.assert_Less(processing_time, 5.0,
                        f"Single order processing took {processing_time:.3f}s, must be <5s")
         
         # Verify processing completed successfully
@@ -138,15 +133,15 @@ class PerformanceValidationTests(IntegrationTestSuite):
         
         # Performance assertions
         avg_time_per_order = batch_time / batch_size
-        self.assertLess(avg_time_per_order, 5.0,
+        self.assert_Less(avg_time_per_order, 5.0,
                        f"Average batch processing time {avg_time_per_order:.3f}s per order must be <5s")
         
         # Batch should be more efficient than individual processing
-        self.assertLess(batch_time, batch_size * 2.0,
+        self.assert_Less(batch_time, batch_size * 2.0,
                        f"Batch processing {batch_time:.3f}s should be more efficient than individual processing")
         
         # Verify all orders were processed
-        self.assertEqual(len(batch_results), batch_size,
+        self.assert_Equal(len(batch_results), batch_size,
                         "All orders should be processed in batch")
         
         # Log performance metrics
@@ -225,11 +220,11 @@ class PerformanceValidationTests(IntegrationTestSuite):
         
         # Performance assertions
         avg_concurrent_time = concurrent_time / len(concurrent_orders)
-        self.assertLess(avg_concurrent_time, 5.0,
+        self.assert_Less(avg_concurrent_time, 5.0,
                        f"Average concurrent processing time {avg_concurrent_time:.3f}s must be <5s")
         
         # Verify all orders were processed
-        self.assertEqual(len(concurrent_results), len(concurrent_orders),
+        self.assert_Equal(len(concurrent_results), len(concurrent_orders),
                         "All concurrent orders should be processed")
         
         # Log performance metrics
@@ -272,14 +267,14 @@ class PerformanceValidationTests(IntegrationTestSuite):
         query2_time = time.time() - start_time
         
         # Performance assertions
-        self.assertLess(query1_time, 2.0,
+        self.assert_Less(query1_time, 2.0,
                        f"Complex join query took {query1_time:.3f}s, should be <2s")
-        self.assertLess(query2_time, 3.0,
+        self.assert_Less(query2_time, 3.0,
                        f"Aggregation query took {query2_time:.3f}s, should be <3s")
         
         # Verify queries returned data
         self.assertGreaterEqual(len(complex_query), 0, "Complex query should return results")
-        self.assertGreater(len(routes_with_stats), 0, "Should have routes for statistics")
+        self.assert_Greater(len(routes_with_stats), 0, "Should have routes for statistics")
         
         # Log performance metrics
         print(f"Complex join query time: {query1_time:.3f}s")
@@ -304,11 +299,11 @@ class PerformanceValidationTests(IntegrationTestSuite):
         validation_time = time.time() - start_time
         
         # Performance assertion
-        self.assertLess(validation_time, 5.0,
+        self.assert_Less(validation_time, 5.0,
                        f"Business validation took {validation_time:.3f}s, should be <5s")
         
         # Verify validation completed
-        self.assertEqual(len(validation_reports), 5,
+        self.assert_Equal(len(validation_reports), 5,
                         "Should have 5 validation reports")
         
         # Test individual validation performance
@@ -333,7 +328,7 @@ class PerformanceValidationTests(IntegrationTestSuite):
         
         # Performance assertions for individual validations
         for validation_type, duration in individual_times.items():
-            self.assertLess(duration, 2.0,
+            self.assert_Less(duration, 2.0,
                            f"{validation_type} validation took {duration:.3f}s, should be <2s")
         
         # Log performance metrics
@@ -349,7 +344,7 @@ class PerformanceValidationTests(IntegrationTestSuite):
             import psutil
             import os
         except ImportError:
-            self.skipTest("psutil not available for memory testing")
+            self.skip_Test("psutil not available for memory testing")
         
         # Get initial memory usage
         process = psutil.Process(os.getpid())
@@ -405,7 +400,7 @@ class PerformanceValidationTests(IntegrationTestSuite):
         memory_increase = final_memory - initial_memory
         
         # Memory usage should not increase excessively
-        self.assertLess(memory_increase, 100.0,  # 100MB limit
+        self.assert_Less(memory_increase, 100.0,  # 100MB limit
                        f"Memory usage increased by {memory_increase:.1f}MB, should be <100MB")
         
         # Log memory metrics
@@ -489,11 +484,11 @@ class PerformanceValidationTests(IntegrationTestSuite):
             
             # Performance assertions for stress test
             avg_stress_time = stress_time / total_processed if total_processed > 0 else float('inf')
-            self.assertLess(avg_stress_time, 10.0,  # Relaxed requirement for stress test
+            self.assert_Less(avg_stress_time, 10.0,  # Relaxed requirement for stress test
                            f"Stress test average time {avg_stress_time:.3f}s per order should be <10s")
             
             # Verify significant portion was processed
-            self.assertGreater(total_processed, stress_batch_size * 0.5,
+            self.assert_Greater(total_processed, stress_batch_size * 0.5,
                               f"Should process at least 50% of orders in stress test")
             
             # Log stress test results
@@ -503,7 +498,7 @@ class PerformanceValidationTests(IntegrationTestSuite):
         except Exception as e:
             # Stress test may fail under extreme load - log but don't fail test
             print(f"Stress test encountered expected limitations: {e}")
-            self.skipTest(f"Stress test hit system limits: {e}")
+            self.skip_Test(f"Stress test hit system limits: {e}")
 
 
 if __name__ == "__main__":

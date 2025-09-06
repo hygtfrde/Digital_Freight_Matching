@@ -168,7 +168,7 @@ def demo_batch_processing():
     trucks, routes, orders = create_demo_data()
     
     # Test each order against each route individually
-    print("\nTesting each order against available routes:")
+    print("\n_Testing each order against available routes:")
     
     valid_count = 0
     for i, order in enumerate(orders, 1):

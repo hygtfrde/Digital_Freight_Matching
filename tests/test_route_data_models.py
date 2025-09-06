@@ -5,7 +5,6 @@ Tests the BoundingBox, DistanceResult, RouteResult classes and coordinate valida
 """
 
 import pytest
-import math
 from unittest.mock import Mock
 from services.route_calculation import (
     BoundingBox, DistanceResult, RouteResult,

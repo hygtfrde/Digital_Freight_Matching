@@ -11,8 +11,6 @@ from pydantic import BaseModel
 from typing import Optional, List, Set
 from datetime import datetime
 from enum import Enum
-import math
-from math import radians, cos, sin, asin, sqrt, atan2
 from utils.distance_utils import haversine
 
 

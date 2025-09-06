@@ -10,13 +10,12 @@ import argparse
 import yaml
 import requests
 import logging
-from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from sqlmodel import Session
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logging.basic_Config(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.get_Logger(__name__)
 
 # Add app directory to path for database imports (avoid root conflicts)
 parent_dir = os.path.dirname(os.path.dirname(__file__))

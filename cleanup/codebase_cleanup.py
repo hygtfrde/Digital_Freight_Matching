@@ -21,11 +21,8 @@ import sys
 import re
 import math
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Tuple, Any
 from dataclasses import dataclass, field
-from collections import defaultdict, Counter
 from datetime import datetime
-import importlib.util
 
 
 @dataclass
@@ -605,6 +602,12 @@ class CodebaseCleanup:
         
         return report
 
+
+# TODO: This function 'main' is duplicated in db_manager.py
+
+# TODO: This function 'main' is duplicated in db_manager.py
+
+# TODO: This function 'main' is duplicated in db_manager.py
 
 def main():
     """Run codebase cleanup analysis"""

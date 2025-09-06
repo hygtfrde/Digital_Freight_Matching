@@ -22,7 +22,7 @@ except ImportError:
     logging.warning("OSMnx not available. Route calculations will use fallback methods.")
 
 # Configure logging for this module
-logger = logging.getLogger(__name__)
+logger = logging.get_Logger(__name__)
 
 
 # ============= COORDINATE VALIDATION AND ERROR HANDLING UTILITIES =============

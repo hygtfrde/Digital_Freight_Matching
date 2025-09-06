@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-import math
 from schemas.schemas import Route, Location, Order
 from utils.distance_utils import haversine
 

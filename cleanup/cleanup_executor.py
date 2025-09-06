@@ -10,7 +10,6 @@ import shutil
 import ast
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Tuple
 from datetime import datetime
 
 from codebase_cleanup import CodebaseCleanup, DeadCodeReport, DuplicateReport
@@ -224,7 +223,7 @@ class CleanupExecutor:
                 original_content = content
                 
                 # Fix common naming issues
-                # Convert camelCase variables to snake_case (simple cases)
+                # Convert camel_Case variables to snake_case (simple cases)
                 content = re.sub(r'\b([a-z]+)([A-Z][a-z]+)\b', r'\1_\2', content)
                 
                 if content != original_content:
@@ -301,7 +300,16 @@ class CleanupExecutor:
         try:
             # Remove unused imports
             print("  🗑️  Removing unused imports...")
-            dead_code = [DeadCodeReport(**item) for item in report["dead_code"]]
+            dead_code = []
+            for item in report["dead_code"]:
+                dead_code.append(DeadCodeReport(
+                    file_path=item["file"],
+                    item_type=item["type"],
+                    item_name=item["name"],
+                    line_number=item["line"],
+                    reason=item["reason"],
+                    suggestions=item["suggestions"]
+                ))
             stats["unused_imports_removed"] = self.remove_unused_imports(dead_code)
             
             # Remove dead functions (be conservative)
@@ -313,7 +321,15 @@ class CleanupExecutor:
             
             # Consolidate duplicates (mark for now)
             print("  🔄 Marking duplicate functions...")
-            duplicates = [DuplicateReport(**item) for item in report["duplicates"]]
+            duplicates = []
+            for item in report["duplicates"]:
+                duplicates.append(DuplicateReport(
+                    file1=item["file1"],
+                    file2=item["file2"],
+                    function_name=item["function"],
+                    similarity_score=item["similarity"],
+                    line_count=item["lines"]
+                ))
             stats["duplicates_consolidated"] = self.consolidate_duplicates(duplicates[:10])  # Limit for safety
             
             # Fix naming conventions

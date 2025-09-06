@@ -8,7 +8,6 @@ of the Digital Freight Matching system.
 
 import os
 import sys
-from pathlib import Path
 
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

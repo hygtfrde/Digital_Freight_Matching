@@ -6,9 +6,7 @@ Tests database operations, initialization, and status checking functionality.
 
 import os
 import sys
-import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
 
 from sqlmodel import Session, create_engine, SQLModel, select
 
@@ -32,7 +30,7 @@ from db_manager import DatabaseManager, SystemStatus
 class TestDatabaseManager(unittest.TestCase):
     """Test cases for DatabaseManager class"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test database for each test"""
         # Create temporary in-memory database for testing
         self.test_engine = create_engine("sqlite:///:memory:", echo=False)
@@ -40,7 +38,7 @@ class TestDatabaseManager(unittest.TestCase):
         self.session = Session(self.test_engine)
         self.db_manager = DatabaseManager(self.session)
     
-    def tearDown(self):
+    def tear_Down(self):
         """Clean up after each test"""
         self.session.close()
     
@@ -51,8 +49,8 @@ class TestDatabaseManager(unittest.TestCase):
         # Should have all entity types with zero counts
         expected_entities = ['clients', 'locations', 'trucks', 'routes', 'orders', 'cargo', 'packages']
         for entity in expected_entities:
-            self.assertIn(entity, counts)
-            self.assertEqual(counts[entity], 0)
+            self.assert_In(entity, counts)
+            self.assert_Equal(counts[entity], 0)
     
     def test_check_existing_data_with_data(self):
         """Test checking data in populated database"""
@@ -70,16 +68,16 @@ class TestDatabaseManager(unittest.TestCase):
         
         existing_data, counts = self.db_manager.check_existing_data()
         
-        self.assertEqual(counts['clients'], 1)
-        self.assertEqual(counts['locations'], 1)
-        self.assertEqual(counts['trucks'], 1)
-        self.assertEqual(counts['routes'], 0)
+        self.assert_Equal(counts['clients'], 1)
+        self.assert_Equal(counts['locations'], 1)
+        self.assert_Equal(counts['trucks'], 1)
+        self.assert_Equal(counts['routes'], 0)
     
     def test_is_database_initialized_false(self):
         """Test database initialization check with insufficient data"""
         existing_data, counts = self.db_manager.check_existing_data()
         is_initialized = self.db_manager._is_database_initialized(counts)
-        self.assertFalse(is_initialized)
+        self.assert_False(is_initialized)
     
     def test_is_database_initialized_true(self):
         """Test database initialization check with sufficient data"""
@@ -125,7 +123,7 @@ class TestDatabaseManager(unittest.TestCase):
         
         existing_data, counts = self.db_manager.check_existing_data()
         is_initialized = self.db_manager._is_database_initialized(counts)
-        self.assertTrue(is_initialized)
+        self.assert_True(is_initialized)
     
     def test_find_contract_client_exists(self):
         """Test finding existing contract client"""
@@ -136,8 +134,8 @@ class TestDatabaseManager(unittest.TestCase):
         
         found_client = self.db_manager._find_contract_client()
         self.assertIsNotNone(found_client)
-        self.assertEqual(found_client.name, "Too-Big-To-Fail Company")
-        self.assertIn("contract", self.db_manager.clients)
+        self.assert_Equal(found_client.name, "Too-Big-To-Fail Company")
+        self.assert_In("contract", self.db_manager.clients)
     
     def test_find_contract_client_not_exists(self):
         """Test finding contract client when it doesn't exist"""
@@ -155,9 +153,9 @@ class TestDatabaseManager(unittest.TestCase):
         
         found_locations = self.db_manager._find_existing_locations()
         
-        self.assertIn("Atlanta", found_locations)
-        self.assertEqual(found_locations["Atlanta"].lat, atlanta_lat)
-        self.assertEqual(found_locations["Atlanta"].lng, atlanta_lng)
+        self.assert_In("Atlanta", found_locations)
+        self.assert_Equal(found_locations["Atlanta"].lat, atlanta_lat)
+        self.assert_Equal(found_locations["Atlanta"].lng, atlanta_lng)
     
     def test_create_contract_client(self):
         """Test creating contract client"""
@@ -166,8 +164,8 @@ class TestDatabaseManager(unittest.TestCase):
         # Check client was created
         client = self.session.exec(select(Client).where(Client.name == "Too-Big-To-Fail Company")).first()
         self.assertIsNotNone(client)
-        self.assertIn("contract", self.db_manager.clients)
-        self.assertEqual(self.db_manager.clients["contract"].name, "Too-Big-To-Fail Company")
+        self.assert_In("contract", self.db_manager.clients)
+        self.assert_Equal(self.db_manager.clients["contract"].name, "Too-Big-To-Fail Company")
     
     def test_ensure_all_locations(self):
         """Test ensuring all required locations exist"""
@@ -176,27 +174,27 @@ class TestDatabaseManager(unittest.TestCase):
         # Check all cities were created
         expected_cities = ["Atlanta", "Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
         for city in expected_cities:
-            self.assertIn(city, self.db_manager.locations)
+            self.assert_In(city, self.db_manager.locations)
         
         # Verify locations in database
         locations = self.session.exec(select(Location)).all()
-        self.assertEqual(len(locations), 6)
+        self.assert_Equal(len(locations), 6)
     
     def test_ensure_trucks(self):
         """Test ensuring required trucks exist"""
         self.db_manager._ensure_trucks()
         
         # Check trucks were created
-        self.assertEqual(len(self.db_manager.trucks), 5)
+        self.assert_Equal(len(self.db_manager.trucks), 5)
         
         # Verify trucks in database
         trucks = self.session.exec(select(Truck)).all()
-        self.assertEqual(len(trucks), 5)
+        self.assert_Equal(len(trucks), 5)
         
         for i, truck in enumerate(trucks):
-            self.assertEqual(truck.type, f"Specialized Contract Truck #{i+1}")
-            self.assertEqual(truck.autonomy, 800.0)
-            self.assertEqual(truck.capacity, 48.0)
+            self.assert_Equal(truck.type, f"Specialized Contract Truck #{i+1}")
+            self.assert_Equal(truck.autonomy, 800.0)
+            self.assert_Equal(truck.capacity, 48.0)
     
     def test_ensure_trucks_with_existing(self):
         """Test ensuring trucks when some already exist"""
@@ -214,8 +212,8 @@ class TestDatabaseManager(unittest.TestCase):
         
         # Should have 5 total trucks (2 existing + 3 new)
         trucks = self.session.exec(select(Truck)).all()
-        self.assertEqual(len(trucks), 5)
-        self.assertEqual(len(self.db_manager.trucks), 5)
+        self.assert_Equal(len(trucks), 5)
+        self.assert_Equal(len(self.db_manager.trucks), 5)
     
     def test_verify_integrity_clean_database(self):
         """Test integrity verification on clean database"""
@@ -223,7 +221,7 @@ class TestDatabaseManager(unittest.TestCase):
         
         # Should return counts without errors
         self.assertIsInstance(counts, dict)
-        self.assertIn('clients', counts)
+        self.assert_In('clients', counts)
     
     def test_verify_integrity_with_orphaned_records(self):
         """Test integrity verification with orphaned records"""
@@ -241,9 +239,9 @@ class TestDatabaseManager(unittest.TestCase):
         self.session.commit()
         
         # Should not raise exception but log warnings
-        with self.assertLogs(level='WARNING') as log:
+        with self.assert_Logs(level='WARNING') as log:
             counts = self.db_manager.verify_integrity()
-            self.assertTrue(any("non-existent client" in message for message in log.output))
+            self.assert_True(any("non-existent client" in message for message in log.output))
     
     def test_get_system_status(self):
         """Test getting comprehensive system status"""
@@ -301,20 +299,20 @@ class TestDatabaseManager(unittest.TestCase):
         status = self.db_manager.get_system_status()
         
         self.assertIsInstance(status, SystemStatus)
-        self.assertEqual(status.clients, 1)
-        self.assertEqual(status.total_routes, 1)
-        self.assertEqual(status.trucks, 1)
-        self.assertEqual(status.orders, 2)
-        self.assertEqual(status.active_contracts, 1)
-        self.assertEqual(status.pending_orders, 1)
-        self.assertEqual(status.daily_profit_loss, -50.0)
-        self.assertEqual(status.truck_utilization, 10.0)  # 10/100 * 100
+        self.assert_Equal(status.clients, 1)
+        self.assert_Equal(status.total_routes, 1)
+        self.assert_Equal(status.trucks, 1)
+        self.assert_Equal(status.orders, 2)
+        self.assert_Equal(status.active_contracts, 1)
+        self.assert_Equal(status.pending_orders, 1)
+        self.assert_Equal(status.daily_profit_loss, -50.0)
+        self.assert_Equal(status.truck_utilization, 10.0)  # 10/100 * 100
     
     def test_initialize_database_empty(self):
         """Test initializing empty database"""
         success = self.db_manager.initialize_database()
         
-        self.assertTrue(success)
+        self.assert_True(success)
         
         # Verify data was created
         existing_data, counts = self.db_manager.check_existing_data()
@@ -330,7 +328,7 @@ class TestDatabaseManager(unittest.TestCase):
         
         # Second initialization should be skipped
         success = self.db_manager.initialize_database()
-        self.assertFalse(success)
+        self.assert_False(success)
     
     def test_initialize_database_force_reinit(self):
         """Test force reinitializing database"""
@@ -339,7 +337,7 @@ class TestDatabaseManager(unittest.TestCase):
         
         # Force reinitialize should proceed
         success = self.db_manager.initialize_database(force_reinit=True)
-        self.assertTrue(success)
+        self.assert_True(success)
     
     @patch('os.path.exists')
     @patch('os.remove')
@@ -349,13 +347,13 @@ class TestDatabaseManager(unittest.TestCase):
         
         success = self.db_manager.reset_database(confirm=True)
         
-        self.assertTrue(success)
+        self.assert_True(success)
         mock_remove.assert_called_once_with("logistics.db")
     
     def test_reset_database_not_confirmed(self):
         """Test resetting database without confirmation"""
         success = self.db_manager.reset_database(confirm=False)
-        self.assertFalse(success)
+        self.assert_False(success)
 
 
 class TestSystemStatus(unittest.TestCase):
@@ -365,25 +363,25 @@ class TestSystemStatus(unittest.TestCase):
         """Test SystemStatus initialization"""
         status = SystemStatus()
         
-        self.assertEqual(status.total_routes, 0)
-        self.assertEqual(status.daily_profit_loss, 0.0)
-        self.assertEqual(status.pending_orders, 0)
-        self.assertEqual(status.truck_utilization, 0.0)
-        self.assertEqual(status.active_contracts, 0)
+        self.assert_Equal(status.total_routes, 0)
+        self.assert_Equal(status.daily_profit_loss, 0.0)
+        self.assert_Equal(status.pending_orders, 0)
+        self.assert_Equal(status.truck_utilization, 0.0)
+        self.assert_Equal(status.active_contracts, 0)
         self.assertIsInstance(status.last_updated, type(status.last_updated))
 
 
 class TestDatabaseManagerIntegration(unittest.TestCase):
     """Integration tests for DatabaseManager"""
     
-    def setUp(self):
+    def set_Up(self):
         """Set up test database for integration tests"""
         self.test_engine = create_engine("sqlite:///:memory:", echo=False)
         SQLModel.metadata.create_all(self.test_engine)
         self.session = Session(self.test_engine)
         self.db_manager = DatabaseManager(self.session)
     
-    def tearDown(self):
+    def tear_Down(self):
         """Clean up after each test"""
         self.session.close()
     
@@ -391,7 +389,7 @@ class TestDatabaseManagerIntegration(unittest.TestCase):
         """Test complete initialization workflow"""
         # Initialize database
         success = self.db_manager.initialize_database()
-        self.assertTrue(success)
+        self.assert_True(success)
         
         # Verify integrity
         counts = self.db_manager.verify_integrity()
@@ -400,7 +398,7 @@ class TestDatabaseManagerIntegration(unittest.TestCase):
         # Get system status
         status = self.db_manager.get_system_status()
         self.assertIsInstance(status, SystemStatus)
-        self.assertGreater(status.total_routes, 0)
+        self.assert_Greater(status.total_routes, 0)
         
         # Check that contract client exists
         contract_client = self.db_manager._find_contract_client()
@@ -410,7 +408,7 @@ class TestDatabaseManagerIntegration(unittest.TestCase):
         self.db_manager._find_existing_locations()
         expected_cities = ["Atlanta", "Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
         for city in expected_cities:
-            self.assertIn(city, self.db_manager.locations)
+            self.assert_In(city, self.db_manager.locations)
 
 
 if __name__ == '__main__':

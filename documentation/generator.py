@@ -119,6 +119,8 @@ The Digital Freight Matching system converts unprofitable truck routes into prof
         return str(index_path)
 
 
+# TODO: This function 'main' is duplicated in db_manager.py
+
 def main():
     """Generate all documentation"""
     print("=== Digital Freight Matching Documentation Generator ===")

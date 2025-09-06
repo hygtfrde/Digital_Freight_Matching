@@ -210,6 +210,8 @@ def validate_performance_report():
     return True
 
 
+# TODO: This function 'main' is duplicated in db_manager.py
+
 def main():
     """Main validation function"""
     print("Digital Freight Matching System")
@@ -252,7 +254,7 @@ def main():
     
     if failed == 0:
         print("\n🎉 ALL PERFORMANCE ASSESSMENT FEATURES VALIDATED SUCCESSFULLY!")
-        print("\nImplemented Features:")
+        print("\n_Implemented Features:")
         print("✓ Order processing performance profiling")
         print("✓ Load testing with concurrent users")
         print("✓ Memory usage monitoring and leak detection")
@@ -260,7 +262,7 @@ def main():
         print("✓ Comprehensive performance reporting")
         print("✓ Compliance checking against requirements")
         
-        print("\nRequirements Compliance:")
+        print("\n_Requirements Compliance:")
         print("✓ 4.1: Order processing execution time measurement (< 5 seconds)")
         print("✓ 4.2: Batch processing capabilities without degradation")
         print("✓ 4.3: Clear error messages and graceful failure handling")

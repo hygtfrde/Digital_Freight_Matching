@@ -3,7 +3,6 @@ CRUD Operations for CLI Menu Application
 Handles Create, Read, Update, Delete operations for all entities
 """
 
-from typing import Dict, List, Any, Optional
 from ui_components import (
     Colors, print_success, print_error, print_warning, print_info,
     format_table_data, print_entity_details, get_input, pause
@@ -103,7 +102,7 @@ class CRUDOperations:
             
             if entities:
                 format_table_data(entities, config['headers'])
-                print(f"\nTotal: {len(entities)} {config['plural'].lower()}")
+                print(f"\n_Total: {len(entities)} {config['plural'].lower()}")
             else:
                 print_info(f"No {config['plural'].lower()} found.")
             
@@ -215,7 +214,7 @@ class CRUDOperations:
             print(f"\n✏️ Update {config['name']} (ID: {entity_id})")
             print("=" * 40)
             print_entity_details(current, "Current Values")
-            print("\nEnter new values (leave blank to keep current):")
+            print("\n_Enter new values (leave blank to keep current):")
             
             update_data = {}
             updatable_fields = [f for f in config['headers'] if f != 'id']

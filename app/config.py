@@ -17,7 +17,7 @@ def setup_logging(level: str = "INFO") -> None:
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
-    logging.basicConfig(
+    logging.basic_Config(
         level=getattr(logging, level.upper()),
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
@@ -27,11 +27,11 @@ def setup_logging(level: str = "INFO") -> None:
     )
     
     # Set specific logger levels
-    logging.getLogger('osmnx').setLevel(logging.WARNING)
-    logging.getLogger('networkx').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.get_Logger('osmnx').set_Level(logging.WARNING)
+    logging.get_Logger('networkx').set_Level(logging.WARNING)
+    logging.get_Logger('urllib3').set_Level(logging.WARNING)
     
-    logger = logging.getLogger(__name__)
+    logger = logging.get_Logger(__name__)
     logger.info("Logging configured successfully")
 
 
@@ -70,17 +70,6 @@ def get_osmnx_config() -> Dict[str, Any]:
     }
 
 
-def get_database_config() -> Dict[str, Any]:
-    """
-    Get database configuration settings.
-    
-    Returns:
-        Dictionary containing database configuration parameters
-    """
-    return {
-        "database_url": os.getenv("DATABASE_URL", "sqlite:///logistics.db"),
-        "echo": os.getenv("DB_ECHO", "false").lower() == "true"
-    }
 
 
 def get_api_config() -> Dict[str, Any]:
@@ -102,5 +91,5 @@ def get_api_config() -> Dict[str, Any]:
 setup_logging(os.getenv("LOG_LEVEL", "INFO"))
 
 # Create logger for this module
-logger = logging.getLogger(__name__)
+logger = logging.get_Logger(__name__)
 logger.info("Configuration module loaded")

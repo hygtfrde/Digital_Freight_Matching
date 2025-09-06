@@ -6,7 +6,6 @@ Digital Freight Matching System - Modular CLI Dashboard
 
 import sys
 import argparse
-from pathlib import Path
 import os
 
 app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app'))
@@ -14,10 +13,13 @@ if app_dir not in sys.path:
     sys.path.insert(0, app_dir)
 
 # Import from local cli_menu_app data_service (not root)
-from data_service import create_data_service, parse_cli_args
 from menu_system import MenuSystem
 from ui_components import print_error, print_success, Colors
 
+
+# TODO: This function 'main' is duplicated in db_manager.py
+
+# TODO: This function 'main' is duplicated in db_manager.py
 
 def main():
     """Main entry point for the CLI application"""
