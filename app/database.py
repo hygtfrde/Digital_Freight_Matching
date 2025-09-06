@@ -89,6 +89,22 @@ class Cargo(SQLModel, table=True):
     def get_types(self) -> Set[CargoType]:
         """Get unique cargo types in this shipment"""
         return {p.type for p in self.packages}
+    
+    def is_compatible_with(self, other_cargo: "Cargo") -> bool:
+        """Check if this cargo is compatible with another cargo"""
+        incompatible_pairs = [
+            (CargoType.HAZMAT, CargoType.FRAGILE),
+            (CargoType.HAZMAT, CargoType.REFRIGERATED)
+        ]
+        
+        my_types = self.get_types()
+        other_types = other_cargo.get_types()
+        
+        for type1, type2 in incompatible_pairs:
+            if (type1 in my_types and type2 in other_types) or \
+               (type2 in my_types and type1 in other_types):
+                return False
+        return True
 
 
 class Order(SQLModel, table=True):
@@ -120,6 +136,14 @@ class Order(SQLModel, table=True):
     def total_distance(self) -> float:
         """Calculate pickup to dropoff distance"""
         return self.location_origin.distance_to(self.location_destiny)
+    
+    def total_volume(self) -> float:
+        """Calculate total volume of all cargo in this order"""
+        return sum(c.total_volume() for c in self.cargo)
+    
+    def total_weight(self) -> float:
+        """Calculate total weight of all cargo in this order"""
+        return sum(c.total_weight() for c in self.cargo)
 
 
 class Route(SQLModel, table=True):
@@ -158,6 +182,28 @@ class Route(SQLModel, table=True):
     def base_distance(self) -> float:
         """Distance from origin to destination"""
         return self.location_origin.distance_to(self.location_destiny)
+    
+    def total_distance(self) -> float:
+        """Calculate total distance including all waypoints"""
+        if hasattr(self, 'path') and self.path and len(self.path) >= 2:
+            total = 0.0
+            for i in range(len(self.path) - 1):
+                total += self.path[i].distance_to(self.path[i + 1])
+            return total
+        return self.base_distance()
+    
+    def total_time(self, base_speed_kmh: float = 80.0) -> float:
+        """
+        Calculate total route time in hours
+        Includes driving time and stop time
+        """
+        distance = self.total_distance()
+        drive_time = distance / base_speed_kmh
+        
+        # Add 15 minutes (0.25 hours) per order for loading/unloading
+        stop_time = len(self.orders) * 2 * 0.25
+        
+        return drive_time + stop_time
 
     def can_serve_order(self, order: Order) -> bool:
         """Check if this route can serve an order based on locations"""
