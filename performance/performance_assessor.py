@@ -28,6 +28,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import Order, Route, Truck
+from order_processor import OrderProcessor
 
 
 

@@ -11,8 +11,9 @@ import ast
 import re
 from pathlib import Path
 from datetime import datetime
+from typing import List, Dict
 
-from codebase_cleanup import CodebaseCleanup, DeadCodeReport, DuplicateReport
+from cleanup.codebase_cleanup import CodebaseCleanup, DeadCodeReport, DuplicateReport
 
 
 class CleanupExecutor:
