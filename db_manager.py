@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime
 from io import StringIO
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Tuple, Optional
 
 import pandas as pd
 from sqlmodel import Session, select
@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 # Add app directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
-from database import (
+from app.database import (
     CargoType,
     Client,
     Location,
@@ -69,7 +69,7 @@ CITY_COORDINATES = {
 # Current daily losses from business requirements
 DAILY_LOSSES = {
     1: -53.51,   # Ringgold
-    2: -50.12,   # Augusta  
+    2: -50.12,   # Augusta
     3: -131.40,  # Savannah
     4: -96.43,   # Albany
     5: -56.69    # Columbus
@@ -95,69 +95,69 @@ class SystemStatus:
 
 class DatabaseManager:
     """Unified database manager with safe initialization and status checking"""
-    
+
     def __init__(self, session: Session):
         self.session = session
         self.clients = {}
         self.locations = {}
         self.trucks = []
         self.routes = []
-    
+
     def initialize_database(self, force_reinit: bool = False) -> bool:
         """
         Initialize database with safety checks to prevent duplicates
-        
+
         Args:
             force_reinit: If True, reinitialize even if data exists (may create duplicates)
-            
+
         Returns:
             bool: True if initialization successful, False if skipped due to existing data
         """
         logger.info("Starting database initialization...")
-        
+
         try:
             # Create tables first
             create_tables()
-            
+
             # Check existing data
             existing_data, counts = self.check_existing_data()
-            
+
             if not force_reinit and self._is_database_initialized(counts):
                 logger.info("Database appears to be already initialized with contract data")
                 logger.info("Skipping initialization to prevent duplicates")
                 logger.info("Use force_reinit=True to reinitialize anyway")
                 self._print_existing_summary(counts)
                 return False
-            
+
             if force_reinit:
                 logger.warning("Force reinitializing database (may create duplicates)")
-            
+
             # Find existing entities to reuse
             contract_client = self._find_contract_client()
             existing_locations = self._find_existing_locations()
-            
+
             # Initialize missing data
             if not contract_client:
                 self._create_contract_client()
-            
+
             self._ensure_all_locations()
             self._ensure_trucks()
             self._ensure_routes()
             self._ensure_contract_orders()
             self._create_example_orders_if_missing()
-            
+
             # Commit all changes
             self.session.commit()
-            
+
             logger.info("Database initialization completed successfully!")
             self._print_summary()
             return True
-            
+
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
             self.session.rollback()
             raise
-    
+
     def check_existing_data(self) -> Tuple[Dict, Dict[str, int]]:
         """Check what data already exists in the database"""
         existing = {
@@ -169,47 +169,47 @@ class DatabaseManager:
             'cargo': self.session.exec(select(Cargo)).all(),
             'packages': self.session.exec(select(Package)).all()
         }
-        
+
         counts = {key: len(value) for key, value in existing.items()}
         logger.info(f"Existing data counts: {counts}")
-        
+
         return existing, counts
-    
+
     def verify_integrity(self) -> Dict[str, int]:
         """Verify database integrity and return entity counts"""
         try:
             existing_data, counts = self.check_existing_data()
-            
+
             # Additional integrity checks
             integrity_issues = []
-            
+
             # Check for orphaned records
             for order in existing_data['orders']:
                 if order.client_id and not any(c.id == order.client_id for c in existing_data['clients']):
                     integrity_issues.append(f"Order {order.id} references non-existent client {order.client_id}")
-            
+
             for route in existing_data['routes']:
                 if route.truck_id and not any(t.id == route.truck_id for t in existing_data['trucks']):
                     integrity_issues.append(f"Route {route.id} references non-existent truck {route.truck_id}")
-            
+
             if integrity_issues:
                 logger.warning(f"Found {len(integrity_issues)} integrity issues:")
                 for issue in integrity_issues:
                     logger.warning(f"  - {issue}")
             else:
                 logger.info("Database integrity check passed")
-            
+
             return counts
-            
+
         except Exception as e:
             logger.error(f"Database integrity check failed: {e}")
             raise
-    
+
     def get_system_status(self) -> SystemStatus:
         """Get comprehensive system status"""
         try:
             status = SystemStatus()
-            
+
             # Get entity counts
             existing_data, counts = self.check_existing_data()
             status.clients = counts['clients']
@@ -219,52 +219,52 @@ class DatabaseManager:
             status.orders = counts['orders']
             status.cargo_loads = counts['cargo']
             status.packages = counts['packages']
-            
+
             # Calculate financial metrics
             routes = existing_data['routes']
             status.daily_profit_loss = sum(route.profitability for route in routes)
-            
+
             # Count contract vs pending orders
             contract_orders = [o for o in existing_data['orders'] if o.contract_type]
             pending_orders = [o for o in existing_data['orders'] if not o.contract_type and not o.route_id]
             status.active_contracts = len(contract_orders)
             status.pending_orders = len(pending_orders)
-            
+
             # Calculate truck utilization
             trucks = existing_data['trucks']
             packages = existing_data['packages']
-            
+
             if trucks:
                 total_capacity = sum(truck.capacity for truck in trucks)
                 used_volume = sum(pkg.volume for pkg in packages)
                 status.truck_utilization = (used_volume / total_capacity) * 100 if total_capacity > 0 else 0
-            
+
             status.last_updated = datetime.utcnow()
-            
+
             return status
-            
+
         except Exception as e:
             logger.error(f"Failed to get system status: {e}")
             raise
-    
+
     def reset_database(self, confirm: bool = False) -> bool:
         """
         Reset database by removing the database file
-        
+
         Args:
             confirm: If True, proceed with reset without prompting
-            
+
         Returns:
             bool: True if reset successful
         """
         if not confirm:
             logger.warning("This will delete ALL database data!")
             return False
-        
+
         try:
             # Close any existing connections
             self.session.close()
-            
+
             # Remove database file
             db_file = "logistics.db"
             if os.path.exists(db_file):
@@ -272,16 +272,16 @@ class DatabaseManager:
                 logger.info(f"Removed {db_file}")
             else:
                 logger.info(f"{db_file} does not exist")
-            
+
             # Recreate tables
             create_tables()
             logger.info("Database reset completed successfully")
             return True
-            
+
         except Exception as e:
             logger.error(f"Database reset failed: {e}")
             raise
-    
+
     def _is_database_initialized(self, counts: Dict[str, int]) -> bool:
         """Check if database appears to be already initialized with contract data"""
         # Contract data should have: 1 client, 6 locations, 5 trucks, 5 routes
@@ -291,31 +291,31 @@ class DatabaseManager:
             'trucks': 5,
             'routes': 5
         }
-        
+
         for entity, min_count in expected_minimums.items():
             if counts.get(entity, 0) >= min_count:
                 logger.info(f"Found {counts[entity]} {entity} (expected >= {min_count})")
             else:
                 return False
-        
+
         return True
-    
+
     def _find_contract_client(self) -> Optional[Client]:
         """Find existing contract client or return None"""
         client = self.session.exec(
             select(Client).where(Client.name == "Too-Big-To-Fail Company")
         ).first()
-        
+
         if client:
             logger.info(f"Found existing contract client: {client.name}")
             self.clients["contract"] = client
-        
+
         return client
-    
+
     def _find_existing_locations(self) -> Dict[str, Location]:
         """Find existing locations that match our city coordinates"""
         found_locations = {}
-        
+
         for city, (lat, lng) in CITY_COORDINATES.items():
             # Look for locations within a small tolerance (0.001 degrees ≈ 100m)
             tolerance = 0.001
@@ -325,14 +325,14 @@ class DatabaseManager:
                     Location.lng.between(lng - tolerance, lng + tolerance)
                 )
             ).first()
-            
+
             if location:
                 found_locations[city] = location
                 logger.info(f"Found existing location for {city}: ({location.lat}, {location.lng})")
-        
+
         self.locations.update(found_locations)
         return found_locations
-    
+
     def _create_contract_client(self):
         """Create the Too-Big-To-Fail contract client if it doesn't exist"""
         client = Client(name="Too-Big-To-Fail Company")
@@ -340,7 +340,7 @@ class DatabaseManager:
         self.session.flush()
         self.clients["contract"] = client
         logger.info(f"Created contract client: {client.name}")
-    
+
     def _ensure_all_locations(self):
         """Ensure all required locations exist"""
         for city, (lat, lng) in CITY_COORDINATES.items():
@@ -350,22 +350,22 @@ class DatabaseManager:
                 logger.info(f"Created location {city}: ({lat}, {lng})")
             else:
                 logger.info(f"Using existing location for {city}")
-    
+
     def _ensure_trucks(self):
         """Ensure required trucks exist"""
         existing_trucks = self.session.exec(
             select(Truck).where(Truck.type.like("Specialized Contract Truck%"))
         ).all()
-        
+
         if len(existing_trucks) >= 5:
             logger.info(f"Found {len(existing_trucks)} existing contract trucks")
             self.trucks = existing_trucks[:5]
             return
-        
+
         # Create missing trucks
         needed = 5 - len(existing_trucks)
         start_num = len(existing_trucks) + 1
-        
+
         for i in range(start_num, start_num + needed):
             truck = Truck(
                 autonomy=800.0,
@@ -375,36 +375,36 @@ class DatabaseManager:
             self.session.add(truck)
             self.trucks.append(truck)
             logger.info(f"Created truck #{i}")
-        
+
         self.trucks = existing_trucks + self.trucks
         self.session.flush()
-    
+
     def _ensure_routes(self):
         """Ensure required routes exist"""
         atlanta = self.locations["Atlanta"]
-        
+
         # Check for existing routes from Atlanta
         existing_routes = self.session.exec(
             select(Route).where(Route.location_origin_id == atlanta.id)
         ).all()
-        
+
         if len(existing_routes) >= 5:
             logger.info(f"Found {len(existing_routes)} existing routes from Atlanta")
             self.routes = existing_routes[:5]
             return
-        
+
         # Create missing routes
         df = pd.read_csv(StringIO(CONTRACT_DATA))
-        
+
         for idx, row in df.iterrows():
             route_num = int(row['route'])
             anchor_point = row['anchor_point']
-            
+
             destination = self.locations.get(anchor_point)
             if not destination:
                 logger.warning(f"Destination {anchor_point} not found, skipping route {route_num}")
                 continue
-            
+
             # Check if this specific route already exists
             existing_route = self.session.exec(
                 select(Route).where(
@@ -412,16 +412,16 @@ class DatabaseManager:
                     Route.location_destiny_id == destination.id
                 )
             ).first()
-            
+
             if existing_route:
                 logger.info(f"Route {route_num} already exists: Atlanta -> {anchor_point}")
                 self.routes.append(existing_route)
                 continue
-            
+
             # Create new route
             current_profitability = DAILY_LOSSES.get(route_num, 0.0)
             truck = self.trucks[idx] if idx < len(self.trucks) else None
-            
+
             route = Route(
                 location_origin_id=atlanta.id,
                 location_destiny_id=destination.id,
@@ -430,25 +430,25 @@ class DatabaseManager:
             )
             self.session.add(route)
             self.routes.append(route)
-            
+
             logger.info(f"Created route {route_num}: Atlanta -> {anchor_point} "
                        f"(${current_profitability:.2f}/day)")
-        
+
         self.session.flush()
-    
+
     def _ensure_contract_orders(self):
         """Ensure contract orders exist for each route"""
         contract_client = self.clients.get("contract")
         if not contract_client:
             logger.warning("No contract client found, skipping contract orders")
             return
-        
+
         df = pd.read_csv(StringIO(CONTRACT_DATA))
-        
+
         for idx, (route, row) in enumerate(zip(self.routes, df.iterrows())):
             _, data = row
             pallets = int(data['pallets'])
-            
+
             # Check if contract order already exists for this route
             existing_order = self.session.exec(
                 select(Order).where(
@@ -457,11 +457,11 @@ class DatabaseManager:
                     Order.contract_type == "4-year binding contract"
                 )
             ).first()
-            
+
             if existing_order:
                 logger.info(f"Contract order already exists for route {idx+1}")
                 continue
-            
+
             # Create contract order
             order = Order(
                 location_origin_id=route.location_origin_id,
@@ -472,12 +472,12 @@ class DatabaseManager:
             )
             self.session.add(order)
             self.session.flush()
-            
+
             # Create cargo for the order
             cargo = Cargo(order_id=order.id, truck_id=route.truck_id)
             self.session.add(cargo)
             self.session.flush()
-            
+
             # Create packages based on pallet count
             for pallet_num in range(pallets):
                 package = Package(
@@ -487,16 +487,16 @@ class DatabaseManager:
                     cargo_id=cargo.id
                 )
                 self.session.add(package)
-            
+
             logger.info(f"Created contract order for route {idx+1}: {pallets} pallets")
-    
+
     def _create_example_orders_if_missing(self):
         """Create example orders if they don't exist"""
         # Check if example client exists
         example_client = self.session.exec(
             select(Client).where(Client.name == "Example Client")
         ).first()
-        
+
         if example_client:
             # Check if example orders exist
             existing_example_orders = self.session.exec(
@@ -505,7 +505,7 @@ class DatabaseManager:
                     Order.contract_type.is_(None)
                 )
             ).all()
-            
+
             if existing_example_orders:
                 logger.info(f"Found {len(existing_example_orders)} existing example orders")
                 return
@@ -515,16 +515,16 @@ class DatabaseManager:
             self.session.add(example_client)
             self.session.flush()
             self.clients["example"] = example_client
-        
+
         # Create example orders from order examples data
         df = pd.read_csv(StringIO(ORDER_EXAMPLES_DATA))
-        
+
         pickup_row = None
         order_count = 0
-        
+
         for idx, row in df.iterrows():
             point_type = row['point_type']
-            
+
             if point_type == "Pick Up Point":
                 pickup_row = row
             elif point_type == "Drop Off Point" and pickup_row is not None:
@@ -534,13 +534,13 @@ class DatabaseManager:
                     lat=pickup_row['lat'],
                     lng=pickup_row['lng']
                 )
-                
+
                 dropoff_loc = create_location(
                     self.session,
                     lat=row['lat'],
                     lng=row['lng']
                 )
-                
+
                 # Create order
                 order = Order(
                     location_origin_id=pickup_loc.id,
@@ -549,14 +549,14 @@ class DatabaseManager:
                 )
                 self.session.add(order)
                 self.session.flush()
-                
+
                 # Create cargo with packages if quantity specified
                 package_qty = pickup_row.get('packages_qty', 0)
                 if pd.notna(package_qty) and package_qty > 0:
                     cargo = Cargo(order_id=order.id)
                     self.session.add(cargo)
                     self.session.flush()
-                    
+
                     # Create packages
                     for _ in range(int(package_qty)):
                         package = Package(
@@ -566,12 +566,12 @@ class DatabaseManager:
                             cargo_id=cargo.id
                         )
                         self.session.add(package)
-                
+
                 order_count += 1
                 pickup_row = None
-        
+
         logger.info(f"Created {order_count} example orders")
-    
+
     def _print_existing_summary(self, counts: Dict[str, int]):
         """Print summary of existing data"""
         logger.info("\n" + "="*60)
@@ -581,11 +581,11 @@ class DatabaseManager:
             logger.info(f"{entity.capitalize()}: {count}")
         logger.info("="*60)
         logger.info("Database already contains data - initialization skipped")
-    
+
     def _print_summary(self):
         """Print summary of created/updated data"""
         total_loss = sum(DAILY_LOSSES.values())
-        
+
         logger.info("\n" + "="*60)
         logger.info("DATABASE INITIALIZATION SUMMARY")
         logger.info("="*60)
@@ -602,11 +602,11 @@ def cli_init(force: bool = False):
     """Initialize database with contract data"""
     logger.info("Creating database tables...")
     create_tables()
-    
+
     with Session(engine) as session:
         db_manager = DatabaseManager(session)
         success = db_manager.initialize_database(force_reinit=force)
-        
+
         if success:
             logger.info("Database initialization completed successfully")
         else:
@@ -618,7 +618,7 @@ def cli_verify():
     with Session(engine) as session:
         db_manager = DatabaseManager(session)
         counts = db_manager.verify_integrity()
-        
+
         print("\n" + "="*60)
         print("DATABASE VERIFICATION SUMMARY")
         print("="*60)
@@ -632,7 +632,7 @@ def cli_status():
     with Session(engine) as session:
         db_manager = DatabaseManager(session)
         status = db_manager.get_system_status()
-        
+
         print("\n" + "="*60)
         print("DATABASE STATUS")
         print("="*60)
@@ -659,7 +659,7 @@ def cli_reset(confirm: bool = False):
         if confirm_input.lower() != 'yes':
             print("Reset cancelled")
             return
-    
+
     with Session(engine) as session:
         db_manager = DatabaseManager(session)
         success = db_manager.reset_database(confirm=True)
@@ -670,28 +670,28 @@ def cli_reset(confirm: bool = False):
 def main():
     """Main CLI function"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Digital Freight Matcher Database Manager")
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
+
     # Init command
     init_parser = subparsers.add_parser('init', help='Initialize database with contract data')
-    init_parser.add_argument('--force', '-f', action='store_true', 
+    init_parser.add_argument('--force', '-f', action='store_true',
                            help='Force initialization even if data exists (may create duplicates)')
-    
+
     # Verify command
     subparsers.add_parser('verify', help='Verify database contents and integrity')
-    
+
     # Status command
     subparsers.add_parser('status', help='Show database status')
-    
+
     # Reset command
     reset_parser = subparsers.add_parser('reset', help='Reset database (removes all data)')
-    reset_parser.add_argument('--confirm', action='store_true', 
+    reset_parser.add_argument('--confirm', action='store_true',
                             help='Confirm database reset')
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         # Default behavior - initialize database
         force = "--force" in sys.argv or "-f" in sys.argv
@@ -699,7 +699,7 @@ def main():
             logger.warning("Force reinitializing database (may create duplicates)")
         cli_init(force=force)
         return
-    
+
     try:
         if args.command == 'init':
             cli_init(force=args.force)

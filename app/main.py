@@ -32,7 +32,7 @@ try:
     )
 except ImportError:
     # Fallback for direct execution
-    from database import (
+    from app.database import (
         Client,
         Location,
         Order,
@@ -63,7 +63,7 @@ def startup_event():
         import os
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
         from safe_db_init import SafeDataIngestion
-        
+
         with Session(engine) as session:
             ingestion = SafeDataIngestion(session)
             ingestion.initialize_safely()
@@ -113,7 +113,7 @@ def get_client(client_id: int, session: Session = Depends(get_session)):
     client = session.get(Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
+
     orders = session.exec(select(Order).where(Order.client_id == client_id)).all()
     return {
         "id": client.id,
@@ -130,7 +130,7 @@ def get_locations(marked_only: bool = False, session: Session = Depends(get_sess
     query = select(Location)
     if marked_only:
         query = query.where(Location.marked == True)
-    
+
     locations = session.exec(query).all()
     return [{"id": l.id, "lat": l.lat, "lng": l.lng, "marked": l.marked} for l in locations]
 
@@ -140,14 +140,14 @@ def get_trucks(session: Session = Depends(get_session)):
     """Get all trucks with capacity information"""
     trucks = session.exec(select(Truck)).all()
     result = []
-    
+
     for truck in trucks:
         # Calculate utilization
         cargo_loads = session.exec(select(Cargo).where(Cargo.truck_id == truck.id)).all()
         used_capacity = sum(cargo.total_volume() for cargo in cargo_loads)
         available_capacity = truck.capacity - used_capacity
         utilization = (used_capacity / truck.capacity * 100) if truck.capacity > 0 else 0
-        
+
         result.append({
             "id": truck.id,
             "type": truck.type,
@@ -157,7 +157,7 @@ def get_trucks(session: Session = Depends(get_session)):
             "available_capacity": available_capacity,
             "utilization_percent": round(utilization, 1)
         })
-    
+
     return result
 
 @app.get("/trucks/{truck_id}")
@@ -166,10 +166,10 @@ def get_truck_details(truck_id: int, session: Session = Depends(get_session)):
     truck = session.get(Truck, truck_id)
     if not truck:
         raise HTTPException(status_code=404, detail="Truck not found")
-    
+
     routes = session.exec(select(Route).where(Route.truck_id == truck_id)).all()
     cargo_loads = session.exec(select(Cargo).where(Cargo.truck_id == truck_id)).all()
-    
+
     return {
         "id": truck.id,
         "type": truck.type,
@@ -191,7 +191,7 @@ def create_truck(truck_data: dict, session: Session = Depends(get_session)):
         session.add(new_truck)
         session.commit()
         session.refresh(new_truck)
-        
+
         return {"id": new_truck.id, "status": "created", "message": "Truck created successfully"}
     except Exception as e:
         session.rollback()
@@ -203,7 +203,7 @@ def update_truck(truck_id: int, truck_data: dict, session: Session = Depends(get
     truck = session.get(Truck, truck_id)
     if not truck:
         raise HTTPException(status_code=404, detail="Truck not found")
-    
+
     try:
         if "type" in truck_data:
             truck.type = truck_data["type"]
@@ -211,11 +211,11 @@ def update_truck(truck_id: int, truck_data: dict, session: Session = Depends(get
             truck.capacity = truck_data["capacity"]
         if "autonomy" in truck_data:
             truck.autonomy = truck_data["autonomy"]
-        
+
         session.add(truck)
         session.commit()
         session.refresh(truck)
-        
+
         return {"id": truck.id, "status": "updated", "message": "Truck updated successfully"}
     except Exception as e:
         session.rollback()
@@ -227,7 +227,7 @@ def delete_truck(truck_id: int, session: Session = Depends(get_session)):
     truck = session.get(Truck, truck_id)
     if not truck:
         raise HTTPException(status_code=404, detail="Truck not found")
-    
+
     try:
         session.delete(truck)
         session.commit()
@@ -242,12 +242,12 @@ def get_routes(session: Session = Depends(get_session)):
     """Get all routes with profitability and location information"""
     routes = session.exec(select(Route)).all()
     result = []
-    
+
     for route in routes:
         origin = session.get(Location, route.location_origin_id)
         destiny = session.get(Location, route.location_destiny_id)
         orders = session.exec(select(Order).where(Order.route_id == route.id)).all()
-        
+
         result.append({
             "id": route.id,
             "origin": {"lat": origin.lat, "lng": origin.lng} if origin else None,
@@ -257,7 +257,7 @@ def get_routes(session: Session = Depends(get_session)):
             "orders_count": len(orders),
             "distance_km": round(route.base_distance(), 1) if origin and destiny else None
         })
-    
+
     return result
 
 @app.post("/routes")
@@ -273,7 +273,7 @@ def create_route(route_data: dict, session: Session = Depends(get_session)):
         session.add(new_route)
         session.commit()
         session.refresh(new_route)
-        
+
         return {"id": new_route.id, "status": "created", "message": "Route created successfully"}
     except Exception as e:
         session.rollback()
@@ -285,7 +285,7 @@ def update_route(route_id: int, route_data: dict, session: Session = Depends(get
     route = session.get(Route, route_id)
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
-    
+
     try:
         if "location_origin_id" in route_data:
             route.location_origin_id = route_data["location_origin_id"]
@@ -295,11 +295,11 @@ def update_route(route_id: int, route_data: dict, session: Session = Depends(get
             route.profitability = route_data["profitability"]
         if "truck_id" in route_data:
             route.truck_id = route_data["truck_id"]
-        
+
         session.add(route)
         session.commit()
         session.refresh(route)
-        
+
         return {"id": route.id, "status": "updated", "message": "Route updated successfully"}
     except Exception as e:
         session.rollback()
@@ -311,7 +311,7 @@ def delete_route(route_id: int, session: Session = Depends(get_session)):
     route = session.get(Route, route_id)
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
-    
+
     try:
         session.delete(route)
         session.commit()
@@ -329,7 +329,7 @@ def create_client(client_data: dict, session: Session = Depends(get_session)):
         session.add(new_client)
         session.commit()
         session.refresh(new_client)
-        
+
         return {"id": new_client.id, "status": "created", "message": "Client created successfully"}
     except Exception as e:
         session.rollback()
@@ -341,15 +341,15 @@ def update_client(client_id: int, client_data: dict, session: Session = Depends(
     client = session.get(Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
+
     try:
         if "name" in client_data:
             client.name = client_data["name"]
-        
+
         session.add(client)
         session.commit()
         session.refresh(client)
-        
+
         return {"id": client.id, "status": "updated", "message": "Client updated successfully"}
     except Exception as e:
         session.rollback()
@@ -361,7 +361,7 @@ def delete_client(client_id: int, session: Session = Depends(get_session)):
     client = session.get(Client, client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
+
     try:
         session.delete(client)
         session.commit()
@@ -383,7 +383,7 @@ def create_location(location_data: dict, session: Session = Depends(get_session)
         session.add(new_location)
         session.commit()
         session.refresh(new_location)
-        
+
         return {"id": new_location.id, "status": "created", "message": "Location created successfully"}
     except Exception as e:
         session.rollback()
@@ -395,7 +395,7 @@ def update_location(location_id: int, location_data: dict, session: Session = De
     location = session.get(Location, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
     try:
         if "lat" in location_data:
             location.lat = location_data["lat"]
@@ -403,11 +403,11 @@ def update_location(location_id: int, location_data: dict, session: Session = De
             location.lng = location_data["lng"]
         if "marked" in location_data:
             location.marked = location_data["marked"]
-        
+
         session.add(location)
         session.commit()
         session.refresh(location)
-        
+
         return {"id": location.id, "status": "updated", "message": "Location updated successfully"}
     except Exception as e:
         session.rollback()
@@ -419,7 +419,7 @@ def delete_location(location_id: int, session: Session = Depends(get_session)):
     location = session.get(Location, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
     try:
         session.delete(location)
         session.commit()
@@ -434,12 +434,12 @@ def get_route_details(route_id: int, session: Session = Depends(get_session)):
     route = session.get(Route, route_id)
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
-    
+
     origin = session.get(Location, route.location_origin_id)
     destiny = session.get(Location, route.location_destiny_id)
     orders = session.exec(select(Order).where(Order.route_id == route_id)).all()
     truck = session.get(Truck, route.truck_id) if route.truck_id else None
-    
+
     return {
         "id": route.id,
         "origin": {"id": origin.id, "lat": origin.lat, "lng": origin.lng} if origin else None,
@@ -455,24 +455,24 @@ def get_route_details(route_id: int, session: Session = Depends(get_session)):
 def get_orders(client_id: Optional[int] = None, route_id: Optional[int] = None, session: Session = Depends(get_session)):
     """Get orders, optionally filtered by client or route"""
     query = select(Order)
-    
+
     if client_id:
         query = query.where(Order.client_id == client_id)
     if route_id:
         query = query.where(Order.route_id == route_id)
-    
+
     orders = session.exec(query).all()
     result = []
-    
+
     for order in orders:
         origin = session.get(Location, order.location_origin_id)
         destiny = session.get(Location, order.location_destiny_id)
         client = session.get(Client, order.client_id) if order.client_id else None
         cargo_loads = session.exec(select(Cargo).where(Cargo.order_id == order.id)).all()
-        
+
         total_volume = sum(cargo.total_volume() for cargo in cargo_loads)
         total_weight = sum(cargo.total_weight() for cargo in cargo_loads)
-        
+
         result.append({
             "id": order.id,
             "origin": {"lat": origin.lat, "lng": origin.lng} if origin else None,
@@ -484,10 +484,10 @@ def get_orders(client_id: Optional[int] = None, route_id: Optional[int] = None, 
             "total_weight": total_weight,
             "distance_km": round(order.total_distance(), 1) if origin and destiny else None
         })
-    
+
     return result
 
-# Order CRUD endpoints  
+# Order CRUD endpoints
 @app.post("/orders")
 def create_order(order_data: dict, session: Session = Depends(get_session)):
     """Create a new order"""
@@ -502,7 +502,7 @@ def create_order(order_data: dict, session: Session = Depends(get_session)):
         session.add(new_order)
         session.commit()
         session.refresh(new_order)
-        
+
         return {"id": new_order.id, "status": "created", "message": "Order created successfully"}
     except Exception as e:
         session.rollback()
@@ -514,7 +514,7 @@ def update_order(order_id: int, order_data: dict, session: Session = Depends(get
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     try:
         if "location_origin_id" in order_data:
             order.location_origin_id = order_data["location_origin_id"]
@@ -526,11 +526,11 @@ def update_order(order_id: int, order_data: dict, session: Session = Depends(get
             order.route_id = order_data["route_id"]
         if "contract_type" in order_data:
             order.contract_type = order_data["contract_type"]
-        
+
         session.add(order)
         session.commit()
         session.refresh(order)
-        
+
         return {"id": order.id, "status": "updated", "message": "Order updated successfully"}
     except Exception as e:
         session.rollback()
@@ -542,7 +542,7 @@ def delete_order(order_id: int, session: Session = Depends(get_session)):
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     try:
         session.delete(order)
         session.commit()
@@ -556,13 +556,13 @@ def delete_order(order_id: int, session: Session = Depends(get_session)):
 def get_packages(cargo_id: Optional[int] = None, session: Session = Depends(get_session)):
     """Get packages, optionally filtered by cargo"""
     query = select(Package)
-    
+
     if cargo_id:
         query = query.where(Package.cargo_id == cargo_id)
-    
+
     packages = session.exec(query).all()
     result = []
-    
+
     for package in packages:
         result.append({
             "id": package.id,
@@ -571,7 +571,7 @@ def get_packages(cargo_id: Optional[int] = None, session: Session = Depends(get_
             "type": package.type.value if package.type else None,
             "cargo_id": package.cargo_id
         })
-    
+
     return result
 
 @app.get("/packages/{package_id}")
@@ -580,7 +580,7 @@ def get_package_details(package_id: int, session: Session = Depends(get_session)
     package = session.get(Package, package_id)
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
-    
+
     return {
         "id": package.id,
         "volume": package.volume,
@@ -600,7 +600,7 @@ def create_package(package_data: dict, session: Session = Depends(get_session)):
                 cargo_type = CargoType(cargo_type)
             except ValueError:
                 cargo_type = CargoType.GENERAL
-        
+
         new_package = Package(
             volume=package_data.get("volume"),
             weight=package_data.get("weight"),
@@ -610,7 +610,7 @@ def create_package(package_data: dict, session: Session = Depends(get_session)):
         session.add(new_package)
         session.commit()
         session.refresh(new_package)
-        
+
         return {"id": new_package.id, "status": "created", "message": "Package created successfully"}
     except Exception as e:
         session.rollback()
@@ -622,7 +622,7 @@ def update_package(package_id: int, package_data: dict, session: Session = Depen
     package = session.get(Package, package_id)
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
-    
+
     try:
         if "volume" in package_data:
             package.volume = package_data["volume"]
@@ -638,11 +638,11 @@ def update_package(package_id: int, package_data: dict, session: Session = Depen
             package.type = cargo_type
         if "cargo_id" in package_data:
             package.cargo_id = package_data["cargo_id"]
-        
+
         session.add(package)
         session.commit()
         session.refresh(package)
-        
+
         return {"id": package.id, "status": "updated", "message": "Package updated successfully"}
     except Exception as e:
         session.rollback()
@@ -654,7 +654,7 @@ def delete_package(package_id: int, session: Session = Depends(get_session)):
     package = session.get(Package, package_id)
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
-    
+
     try:
         session.delete(package)
         session.commit()
@@ -668,19 +668,19 @@ def delete_package(package_id: int, session: Session = Depends(get_session)):
 def get_cargo(order_id: Optional[int] = None, truck_id: Optional[int] = None, session: Session = Depends(get_session)):
     """Get cargo, optionally filtered by order or truck"""
     query = select(Cargo)
-    
+
     if order_id:
         query = query.where(Cargo.order_id == order_id)
     if truck_id:
         query = query.where(Cargo.truck_id == truck_id)
-    
+
     cargo_loads = session.exec(query).all()
     result = []
-    
+
     for cargo in cargo_loads:
         # Get associated packages
         packages = session.exec(select(Package).where(Package.cargo_id == cargo.id)).all()
-        
+
         result.append({
             "id": cargo.id,
             "order_id": cargo.order_id,
@@ -689,7 +689,7 @@ def get_cargo(order_id: Optional[int] = None, truck_id: Optional[int] = None, se
             "total_weight": cargo.total_weight(),
             "packages_count": len(packages)
         })
-    
+
     return result
 
 @app.get("/cargo/{cargo_id}")
@@ -698,10 +698,10 @@ def get_cargo_details(cargo_id: int, session: Session = Depends(get_session)):
     cargo = session.get(Cargo, cargo_id)
     if not cargo:
         raise HTTPException(status_code=404, detail="Cargo not found")
-    
+
     # Get associated packages
     packages = session.exec(select(Package).where(Package.cargo_id == cargo_id)).all()
-    
+
     return {
         "id": cargo.id,
         "order_id": cargo.order_id,
@@ -722,7 +722,7 @@ def create_cargo(cargo_data: dict, session: Session = Depends(get_session)):
         session.add(new_cargo)
         session.commit()
         session.refresh(new_cargo)
-        
+
         return {"id": new_cargo.id, "status": "created", "message": "Cargo created successfully"}
     except Exception as e:
         session.rollback()
@@ -734,17 +734,17 @@ def update_cargo(cargo_id: int, cargo_data: dict, session: Session = Depends(get
     cargo = session.get(Cargo, cargo_id)
     if not cargo:
         raise HTTPException(status_code=404, detail="Cargo not found")
-    
+
     try:
         if "order_id" in cargo_data:
             cargo.order_id = cargo_data["order_id"]
         if "truck_id" in cargo_data:
             cargo.truck_id = cargo_data["truck_id"]
-        
+
         session.add(cargo)
         session.commit()
         session.refresh(cargo)
-        
+
         return {"id": cargo.id, "status": "updated", "message": "Cargo updated successfully"}
     except Exception as e:
         session.rollback()
@@ -756,7 +756,7 @@ def delete_cargo(cargo_id: int, session: Session = Depends(get_session)):
     cargo = session.get(Cargo, cargo_id)
     if not cargo:
         raise HTTPException(status_code=404, detail="Cargo not found")
-    
+
     try:
         session.delete(cargo)
         session.commit()
@@ -775,19 +775,19 @@ def get_analytics_summary(session: Session = Depends(get_session)):
     routes = session.exec(select(Route)).all()
     orders = session.exec(select(Order)).all()
     packages = session.exec(select(Package)).all()
-    
+
     # Calculate financial metrics
     total_daily_loss = sum(route.profitability for route in routes)
-    
+
     # Calculate capacity metrics
     total_truck_capacity = sum(truck.capacity for truck in trucks)
     total_cargo_volume = sum(pkg.volume for pkg in packages)
     utilization = (total_cargo_volume / total_truck_capacity * 100) if total_truck_capacity > 0 else 0
-    
+
     # Contract vs example orders
     contract_orders = [o for o in orders if o.contract_type]
     example_orders = [o for o in orders if not o.contract_type]
-    
+
     return {
         "entities": {
             "clients": len(clients),
@@ -820,13 +820,13 @@ def get_route_analytics(session: Session = Depends(get_session)):
     """Get detailed route analytics"""
     routes = session.exec(select(Route)).all()
     result = []
-    
+
     for i, route in enumerate(routes, 1):
         origin = session.get(Location, route.location_origin_id)
         destiny = session.get(Location, route.location_destiny_id)
         orders = session.exec(select(Order).where(Order.route_id == route.id)).all()
         truck = session.get(Truck, route.truck_id) if route.truck_id else None
-        
+
         # Calculate cargo metrics for this route
         total_volume = 0
         total_weight = 0
@@ -834,7 +834,7 @@ def get_route_analytics(session: Session = Depends(get_session)):
             cargo_loads = session.exec(select(Cargo).where(Cargo.order_id == order.id)).all()
             total_volume += sum(cargo.total_volume() for cargo in cargo_loads)
             total_weight += sum(cargo.total_weight() for cargo in cargo_loads)
-        
+
         result.append({
             "route_number": i,
             "id": route.id,
@@ -847,7 +847,7 @@ def get_route_analytics(session: Session = Depends(get_session)):
             "orders_count": len(orders),
             "destination": f"({destiny.lat:.4f}, {destiny.lng:.4f})" if destiny else None
         })
-    
+
     return result
 
 # Health endpoint

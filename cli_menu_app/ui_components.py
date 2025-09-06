@@ -31,7 +31,7 @@ def print_header(data_service, menu_stack):
     print(Colors.CYAN + "=" * 65 + Colors.ENDC)
     print(Colors.BOLD + "🚛 DIGITAL FREIGHT MATCHING SYSTEM".center(65) + Colors.ENDC)
     print(Colors.CYAN + "=" * 65 + Colors.ENDC)
-    
+
     # Display data mode with color coding
     mode = data_service.mode.upper()
     if mode == "API":
@@ -42,7 +42,7 @@ def print_header(data_service, menu_stack):
         mode_color = Colors.GREEN
         mode_icon = "💾"
         mode_detail = f" ({data_service.config.database_path})"
-    
+
     print(f"🔗 Data Mode: {mode_color}{mode_icon} {mode}{mode_detail}{Colors.ENDC}")
     print(f"📍 Location: {' > '.join(menu_stack)}")
     print(f"⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -53,13 +53,13 @@ def print_header(data_service, menu_stack):
 def print_menu_box(title: str, options: List[tuple]):
     """Print a formatted menu with title box and simple options below"""
     width = 65
-    
+
     # Print title box
     print("┌" + "─" * (width - 2) + "┐")
     print("│" + title.center(width - 2) + "│")
     print("└" + "─" * (width - 2) + "┘")
     print()
-    
+
     # Print options without borders
     for key, icon, label in options:
         print(f"  {key}. {icon} {label}")
@@ -109,22 +109,22 @@ def format_table_data(data: List[dict], headers: List[str]) -> None:
     if not data:
         print_info("No data found.")
         return
-    
+
     # Calculate column widths
     col_widths = {}
     for header in headers:
         col_widths[header] = len(header)
-    
+
     for row in data:
         for header in headers:
             value = str(row.get(header, "N/A"))
             col_widths[header] = max(col_widths[header], len(value))
-    
+
     # Print header
     header_line = " | ".join(header.ljust(col_widths[header]) for header in headers)
     print(Colors.BOLD + header_line + Colors.ENDC)
     print("-" * len(header_line))
-    
+
     # Print data rows
     for row in data:
         row_line = " | ".join(str(row.get(header, "N/A")).ljust(col_widths[header]) for header in headers)
@@ -135,6 +135,6 @@ def print_entity_details(entity: dict, title: str):
     """Print entity details in a formatted way"""
     print(Colors.BOLD + f"\n{title}:" + Colors.ENDC)
     print("-" * len(title))
-    
+
     for key, value in entity.items():
         print(f"{key.replace('_', ' ').title()}: {value}")

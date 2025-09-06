@@ -133,6 +133,13 @@ class Route(SQLModel, table=True):
 
     # Foreign keys
     truck_id: Optional[int] = Field(default=None, foreign_key="truck.id")
+    
+    def __init__(self, **data):
+        # Extract path before calling super().__init__
+        path = data.pop('path', [])
+        super().__init__(**data)
+        # Set path using object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, 'path', path)
 
     # Relationships
     truck: Optional["Truck"] = Relationship(back_populates="routes")
@@ -156,6 +163,103 @@ class Route(SQLModel, table=True):
         """Check if this route can serve an order based on locations"""
         return (self.location_origin_id == order.location_origin_id and
                 self.location_destiny_id == order.location_destiny_id)
+    
+    def set_path(self, waypoints: List["Location"]):
+        """Set the path waypoints for this route (not stored in DB)"""
+        self.path = waypoints
+    
+    def is_within_km(self, location_coords, km: float = 1.0) -> bool:
+        """
+        Check if a location (lat, lng tuple) is within km distance of the route
+        Checks against origin, destination, and any path waypoints
+        """
+        if isinstance(location_coords, tuple):
+            test_location = Location(lat=location_coords[0], lng=location_coords[1])
+        else:
+            test_location = location_coords
+        
+        # Check distance to origin
+        if self.location_origin.distance_to(test_location) <= km:
+            return True
+        
+        # Check distance to destination  
+        if self.location_destiny.distance_to(test_location) <= km:
+            return True
+        
+        # Check distance to path waypoints if they exist
+        # Check if route has a path attribute (for testing)
+        if hasattr(self, 'path') and self.path:
+            for waypoint in self.path:
+                if waypoint.distance_to(test_location) <= km:
+                    return True
+        
+        return False
+    
+    def deviation_time_for_stop(self, location_coords, avg_speed_kmh: float = 80.0) -> float:
+        """
+        Calculate additional time (in minutes) required to make a stop at the given location
+        Returns 15 minutes if within 1km of route, otherwise calculates detour time
+        """
+        if self.is_within_km(location_coords, km=1.0):
+            return 15.0  # Just stop time, no detour needed
+        
+        # Calculate detour distance and time
+        if isinstance(location_coords, tuple):
+            stop_location = Location(lat=location_coords[0], lng=location_coords[1])
+        else:
+            stop_location = location_coords
+        
+        # Simplified calculation: distance from origin to stop + stop to destination - direct distance
+        detour_distance = (
+            self.location_origin.distance_to(stop_location) + 
+            stop_location.distance_to(self.location_destiny) - 
+            self.base_distance()
+        )
+        
+        # Convert to time (hours to minutes) and add stop time
+        detour_time_minutes = (detour_distance / avg_speed_kmh) * 60
+        return detour_time_minutes + 15.0  # Add 15 minutes for the stop itself
+    
+    def calculate_added_cost(self, order: Order) -> dict:
+        """
+        Calculate the additional cost/time of adding an order to this route
+        Returns dict with pickup_time, dropoff_time, total_time, and any errors
+        """
+        try:
+            # Check if order has required locations
+            if not order.location_origin or not order.location_destiny:
+                return {
+                    "pickup_time": 0.0,
+                    "dropoff_time": 0.0, 
+                    "total_time": 0.0,
+                    "error": "Order missing origin or destination location"
+                }
+            
+            # Calculate time for pickup stop
+            pickup_coords = (order.location_origin.lat, order.location_origin.lng)
+            pickup_time = self.deviation_time_for_stop(pickup_coords)
+            
+            # Calculate time for dropoff stop  
+            dropoff_coords = (order.location_destiny.lat, order.location_destiny.lng)
+            dropoff_time = self.deviation_time_for_stop(dropoff_coords)
+            
+            # Total additional time
+            total_time = pickup_time + dropoff_time
+            
+            # Return only numeric values when successful
+            return {
+                "pickup_time": pickup_time,
+                "dropoff_time": dropoff_time, 
+                "total_time": total_time
+            }
+            
+        except Exception as e:
+            return {
+                "pickup_time": 0.0,
+                "dropoff_time": 0.0,
+                "total_time": 0.0,
+                "error": f"Calculation error: {str(e)}"
+            }
 
 
 class Truck(SQLModel, table=True):

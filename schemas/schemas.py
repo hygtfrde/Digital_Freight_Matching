@@ -12,8 +12,6 @@ from typing import Optional, List, Set
 from datetime import datetime
 from enum import Enum
 import math
-from math import radians, cos, sin, asin, sqrt, atan2
-from utils.distance_utils import haversine
 
 
 # ============= ENUMS =============
@@ -35,18 +33,17 @@ class Location(BaseModel):
     marked: bool = False
     
     class Config:
-        orm_mode = True
+        from_attributes = True
     
-    # TODO: Move/refactor distance_to() into UTILS
     def distance_to(self, other: "Location") -> float:
         """Calculate distance to another location using Haversine formula"""
         R = 6371  # Earth radius in km
-        lat1, lng1 = radians(self.lat), radians(self.lng)
-        lat2, lng2 = radians(other.lat), radians(other.lng)
+        lat1, lng1 = math.radians(self.lat), math.radians(self.lng)
+        lat2, lng2 = math.radians(other.lat), math.radians(other.lng)
         dlat = lat2 - lat1
         dlng = lng2 - lng1
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlng / 2) ** 2
-        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return R * c
     
     @property
@@ -63,12 +60,12 @@ class Client(BaseModel):
     """Client model"""
     id: Optional[int] = None
     name: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     locations: List["Location"] = []
     orders: List["Order"] = []
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Package(BaseModel):
@@ -80,7 +77,7 @@ class Package(BaseModel):
     cargo_id: Optional[int] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Cargo(BaseModel):
@@ -93,7 +90,7 @@ class Cargo(BaseModel):
     packages: List["Package"] = []
     
     class Config:
-        orm_mode = True
+        from_attributes = True
     
     def total_volume(self) -> float:
         """Calculate total volume of all packages in this cargo"""
@@ -140,7 +137,7 @@ class Order(BaseModel):
     location_destiny: Optional["Location"] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
     
     def total_distance(self) -> float:
         """Calculate pickup to dropoff distance"""
@@ -177,83 +174,9 @@ class Route(BaseModel):
     
     # Additional path waypoints (not in DB but useful for calculations)
     path: List["Location"] = []
-
-
-    def is_within_km(self, location, km=1.0):
-        """
-        Checks if location (tuple: (lat, lon)) is within `km` of any point in the route.
-        Uses self.path which contains Location objects.
-        """
-        # Handle case where path is empty - check origin and destination
-        route_locations = self.path.copy()
-        if self.location_origin:
-            route_locations.append(self.location_origin)
-        if self.location_destiny:
-            route_locations.append(self.location_destiny)
-        
-        for point in route_locations:
-            if haversine(location[1], location[0], point.lng, point.lat) <= km:
-                return True
-        return False
-
-    def calculate_added_cost(self, order):
-        """
-        Calculate the cost of adding this order to the route.
-        Uses order.location_origin and order.location_destiny.
-        """
-        if not order.location_origin or not order.location_destiny:
-            return {
-                "pickup_time": 0,
-                "dropoff_time": 0,
-                "total_time": 0,
-                "error": "Order missing origin or destination location"
-            }
-        
-        # Convert Location objects to coordinate tuples
-        pickup_coords = (order.location_origin.lat, order.location_origin.lng)
-        dropoff_coords = (order.location_destiny.lat, order.location_destiny.lng)
-        
-        pickup_time = self.deviation_time_for_stop(pickup_coords)
-        dropoff_time = self.deviation_time_for_stop(dropoff_coords)
-        
-        total_time = pickup_time + dropoff_time
-        
-        return {
-            "pickup_time": pickup_time,
-            "dropoff_time": dropoff_time,
-            "total_time": total_time,
-        }
-
-    def deviation_time_for_stop(self, location, avg_speed_kmh=30):
-        """
-        Returns deviation time in minutes for the stop at the given location.
-        location should be a tuple (lat, lng)
-        Uses self.path which contains Location objects.
-        """
-        if self.is_within_km(location, km=1.0):
-            # Deviation is only the stop time
-            return 15
-        else:
-            # Calculate detour - find minimum distance to any point on route
-            route_locations = self.path.copy()
-            if self.location_origin:
-                route_locations.append(self.location_origin)
-            if self.location_destiny:
-                route_locations.append(self.location_destiny)
-            
-            if not route_locations:
-                # No route points available, return just stop time
-                return 15
-            
-            min_dist = min(
-                haversine(location[1], location[0], point.lng, point.lat) 
-                for point in route_locations
-            )
-            # Time = distance / speed * 60 for minutes, + 15 min stop
-            return 15 + (min_dist / avg_speed_kmh) * 60
     
     class Config:
-        orm_mode = True
+        from_attributes = True
     
     def base_distance(self) -> float:
         """Distance from origin to destination"""
@@ -309,7 +232,7 @@ class Truck(BaseModel):
     cargo_loads: List["Cargo"] = []
     
     class Config:
-        orm_mode = True
+        from_attributes = True
     
     def available_capacity(self) -> float:
         """Calculate remaining capacity"""
@@ -427,16 +350,13 @@ class Truck(BaseModel):
 # ============= FORWARD REFERENCES UPDATE =============
 # This is necessary to avoid circular import issues
 
-Client.update_forward_refs()
-Order.update_forward_refs()
-Cargo.update_forward_refs()
-Package.update_forward_refs()
-Route.update_forward_refs()
-Truck.update_forward_refs()
-Location.update_forward_refs()
-
-# update forward refs is deprecated in pydantic v2
-# use model_rebuild() if upgrading to pydantic v2
+Client.model_rebuild()
+Order.model_rebuild()
+Cargo.model_rebuild()
+Package.model_rebuild()
+Route.model_rebuild()
+Truck.model_rebuild()
+Location.model_rebuild()
 
 
 # ============= HELPER FUNCTIONS =============

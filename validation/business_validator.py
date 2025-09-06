@@ -1,7 +1,7 @@
 """
 Business Requirements Validation Framework
 
-This module validates that the Digital Freight Matching system meets all 
+This module validates that the Digital Freight Matching system meets all
 business requirements from the engineering lab specification.
 
 Key Requirements Validated:
@@ -13,12 +13,11 @@ Key Requirements Validated:
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from enum import Enum
-import math
+from typing import Dict, List, Optional
+from schemas.schemas import Order, Route, Truck, Location
 
-from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
 
 
 class ValidationStatus(str, Enum):
@@ -57,7 +56,7 @@ class PerformanceReport:
     throughput_orders_per_second: float
     error_details: List[str]
     timestamp: datetime
-    
+
     def __post_init__(self):
         if self.error_details is None:
             self.error_details = []
@@ -66,11 +65,11 @@ class PerformanceReport:
 class BusinessValidator:
     """
     Validates Digital Freight Matching system against business requirements
-    
+
     This class implements validation methods for each of the 7 main business
     requirements identified in the requirements document.
     """
-    
+
     # Business constants from requirements
     TARGET_DAILY_LOSS_REDUCTION = 388.15  # USD
     MAX_PROXIMITY_KM = 1.0
@@ -79,37 +78,37 @@ class BusinessValidator:
     MAX_ROUTE_TIME_HOURS = 10.0
     STOP_TIME_MINUTES = 15.0
     REQUIRED_CONTRACT_ROUTES = 5
-    
+
     # Contract route destinations (from business requirements)
     CONTRACT_DESTINATIONS = ["Ringgold", "Augusta", "Savannah", "Albany", "Columbus"]
-    
+
     def __init__(self):
         """Initialize the business validator"""
         self.validation_history: List[ValidationReport] = []
         self.performance_history: List[PerformanceReport] = []
-    
-    def validate_profitability_requirements(self, routes: List[Route], 
+
+    def validate_profitability_requirements(self, routes: List[Route],
                                          baseline_daily_loss: float = 388.15) -> ValidationReport:
         """
         Validate Requirement 1.1: System demonstrates conversion of daily loss into profit
-        
+
         Args:
             routes: List of routes with current profitability
             baseline_daily_loss: Original daily loss amount (default: $388.15)
-            
+
         Returns:
             ValidationReport with profitability analysis
         """
         start_time = datetime.now()
-        
+
         try:
             # Calculate current total profitability
             total_current_profit = sum(route.profitability for route in routes)
-            
+
             # Calculate improvement from baseline
             improvement = total_current_profit - (-baseline_daily_loss)
             improvement_percentage = (improvement / baseline_daily_loss) * 100 if baseline_daily_loss > 0 else 0
-            
+
             # Determine validation status
             if total_current_profit > 0:
                 status = ValidationStatus.PASSED
@@ -124,7 +123,7 @@ class BusinessValidator:
             else:
                 status = ValidationStatus.FAILED
                 details = f"System has not improved profitability. Current daily result: ${total_current_profit:.2f}"
-            
+
             metrics = {
                 "baseline_daily_loss": baseline_daily_loss,
                 "current_daily_profit": total_current_profit,
@@ -132,7 +131,7 @@ class BusinessValidator:
                 "improvement_percentage": improvement_percentage,
                 "routes_analyzed": len(routes)
             }
-            
+
             recommendations = []
             if status != ValidationStatus.PASSED:
                 recommendations.extend([
@@ -140,7 +139,7 @@ class BusinessValidator:
                     "Consider adjusting pricing strategy for additional cargo",
                     "Review capacity utilization to maximize revenue per route"
                 ])
-            
+
             report = ValidationReport(
                 requirement_id="1.1",
                 requirement_description="Convert $388.15 daily loss into measurable profit",
@@ -151,10 +150,10 @@ class BusinessValidator:
                 test_data_used={"routes_count": len(routes), "baseline_loss": baseline_daily_loss},
                 recommendations=recommendations
             )
-            
+
             self.validation_history.append(report)
             return report
-            
+
         except Exception as e:
             return ValidationReport(
                 requirement_id="1.1",
@@ -165,50 +164,50 @@ class BusinessValidator:
                 timestamp=start_time,
                 recommendations=["Fix system errors before profitability analysis"]
             )
-    
+
     def validate_proximity_constraint(self, orders: List[Order], routes: List[Route]) -> ValidationReport:
         """
         Validate Requirement 1.2: System enforces 1km proximity constraint
-        
+
         Args:
             orders: List of orders to validate
             routes: List of available routes
-            
+
         Returns:
             ValidationReport with proximity constraint analysis
         """
         start_time = datetime.now()
-        
+
         try:
             violations = []
             total_orders = len(orders)
             compliant_orders = 0
-            
+
             for order in orders:
                 if not order.location_origin or not order.location_destiny:
                     violations.append(f"Order {order.id}: Missing pickup or dropoff location")
                     continue
-                
+
                 # Find closest route for this order
                 min_pickup_distance = float('inf')
                 min_dropoff_distance = float('inf')
                 closest_route = None
-                
+
                 for route in routes:
                     if not route.path:
                         continue
-                    
+
                     # Check distance to route points
                     for route_point in route.path:
                         pickup_dist = self._calculate_distance(order.location_origin, route_point)
                         dropoff_dist = self._calculate_distance(order.location_destiny, route_point)
-                        
+
                         if pickup_dist < min_pickup_distance:
                             min_pickup_distance = pickup_dist
                             closest_route = route
                         if dropoff_dist < min_dropoff_distance:
                             min_dropoff_distance = dropoff_dist
-                
+
                 # Check if within proximity constraint
                 if min_pickup_distance <= self.MAX_PROXIMITY_KM and min_dropoff_distance <= self.MAX_PROXIMITY_KM:
                     compliant_orders += 1
@@ -217,9 +216,9 @@ class BusinessValidator:
                         f"Order {order.id}: Pickup {min_pickup_distance:.2f}km, "
                         f"Dropoff {min_dropoff_distance:.2f}km from closest route"
                     )
-            
+
             compliance_rate = (compliant_orders / total_orders * 100) if total_orders > 0 else 100
-            
+
             if total_orders == 0:
                 status = ValidationStatus.PASSED
                 details = "No orders to validate - proximity constraint compliance confirmed"
@@ -232,7 +231,7 @@ class BusinessValidator:
             else:
                 status = ValidationStatus.FAILED
                 details = f"Only {compliance_rate:.1f}% of orders comply with proximity constraint"
-            
+
             metrics = {
                 "total_orders": total_orders,
                 "compliant_orders": compliant_orders,
@@ -240,7 +239,7 @@ class BusinessValidator:
                 "violations_count": len(violations),
                 "max_proximity_km": self.MAX_PROXIMITY_KM
             }
-            
+
             recommendations = []
             if violations:
                 recommendations.extend([
@@ -248,7 +247,7 @@ class BusinessValidator:
                     "Consider rejecting orders that exceed proximity limits",
                     "Implement real-time proximity checking during order intake"
                 ])
-            
+
             report = ValidationReport(
                 requirement_id="1.2",
                 requirement_description="Enforce 1km proximity constraint for pickup and dropoff",
@@ -259,10 +258,10 @@ class BusinessValidator:
                 test_data_used={"orders_tested": total_orders, "routes_available": len(routes)},
                 recommendations=recommendations
             )
-            
+
             self.validation_history.append(report)
             return report
-            
+
         except Exception as e:
             return ValidationReport(
                 requirement_id="1.2",
@@ -273,41 +272,41 @@ class BusinessValidator:
                 timestamp=start_time,
                 recommendations=["Fix system errors before proximity validation"]
             )
-    
+
     def validate_capacity_constraints(self, orders: List[Order], trucks: List[Truck]) -> ValidationReport:
         """
         Validate Requirement 1.3: System respects capacity limits (48m³, 9180 lbs)
-        
+
         Args:
             orders: List of orders to validate
             trucks: List of trucks with capacity limits
-            
+
         Returns:
             ValidationReport with capacity constraint analysis
         """
         start_time = datetime.now()
-        
+
         try:
             violations = []
             total_assignments = 0
             compliant_assignments = 0
-            
+
             for truck in trucks:
                 # Validate truck capacity limits
                 if truck.capacity > self.MAX_TRUCK_VOLUME_M3:
                     violations.append(f"Truck {truck.id}: Volume capacity {truck.capacity}m³ exceeds limit {self.MAX_TRUCK_VOLUME_M3}m³")
-                
+
                 # Check current cargo load
                 current_volume = truck.total_cargo_volume()
                 current_weight_kg = truck.total_cargo_weight()
                 current_weight_lbs = current_weight_kg * 2.20462  # Convert kg to lbs
-                
+
                 total_assignments += 1
-                
+
                 # Validate volume constraint
                 volume_compliant = current_volume <= self.MAX_TRUCK_VOLUME_M3
                 weight_compliant = current_weight_lbs <= self.MAX_TRUCK_WEIGHT_LBS
-                
+
                 if volume_compliant and weight_compliant:
                     compliant_assignments += 1
                 else:
@@ -319,28 +318,28 @@ class BusinessValidator:
                         violations.append(
                             f"Truck {truck.id}: Weight {current_weight_lbs:.2f}lbs exceeds limit {self.MAX_TRUCK_WEIGHT_LBS}lbs"
                         )
-            
+
             # Check individual orders for capacity requirements
             for order in orders:
                 order_volume = order.total_volume()
                 order_weight_kg = order.total_weight()
                 order_weight_lbs = order_weight_kg * 2.20462
-                
+
                 if order_volume > self.MAX_TRUCK_VOLUME_M3:
                     violations.append(f"Order {order.id}: Volume {order_volume:.2f}m³ exceeds truck capacity")
-                
+
                 if order_weight_lbs > self.MAX_TRUCK_WEIGHT_LBS:
                     violations.append(f"Order {order.id}: Weight {order_weight_lbs:.2f}lbs exceeds truck capacity")
-            
+
             compliance_rate = (compliant_assignments / total_assignments * 100) if total_assignments > 0 else 100
-            
+
             if len(violations) == 0:
                 status = ValidationStatus.PASSED
                 details = f"All capacity constraints respected. {compliance_rate:.1f}% compliance rate"
             elif len(violations) > 0:
                 status = ValidationStatus.FAILED
                 details = f"Capacity violations detected: {len(violations)} violations found"
-            
+
             metrics = {
                 "max_volume_m3": self.MAX_TRUCK_VOLUME_M3,
                 "max_weight_lbs": self.MAX_TRUCK_WEIGHT_LBS,
@@ -349,7 +348,7 @@ class BusinessValidator:
                 "violations_count": len(violations),
                 "compliance_rate_percent": compliance_rate
             }
-            
+
             recommendations = []
             if violations:
                 recommendations.extend([
@@ -357,7 +356,7 @@ class BusinessValidator:
                     "Add real-time capacity monitoring during order processing",
                     "Consider load balancing across multiple trucks for large orders"
                 ])
-            
+
             report = ValidationReport(
                 requirement_id="1.3",
                 requirement_description="Respect 48m³ capacity and 9180 lbs weight limits",
@@ -368,10 +367,10 @@ class BusinessValidator:
                 test_data_used={"trucks_count": len(trucks), "orders_count": len(orders)},
                 recommendations=recommendations
             )
-            
+
             self.validation_history.append(report)
             return report
-            
+
         except Exception as e:
             return ValidationReport(
                 requirement_id="1.3",
@@ -382,32 +381,32 @@ class BusinessValidator:
                 timestamp=start_time,
                 recommendations=["Fix system errors before capacity validation"]
             )
-    
+
     def validate_time_constraints(self, routes: List[Route]) -> ValidationReport:
         """
         Validate Requirement 1.4: System maintains 10-hour maximum route time
-        
+
         Args:
             routes: List of routes to validate
-            
+
         Returns:
             ValidationReport with time constraint analysis
         """
         start_time = datetime.now()
-        
+
         try:
             violations = []
             total_routes = len(routes)
             compliant_routes = 0
-            
+
             for route in routes:
                 # Calculate total route time including stops
                 base_time = route.total_time()  # Driving time
-                
+
                 # Add stop time (15 minutes per order, pickup and dropoff)
                 stop_time_hours = len(route.orders) * 2 * (self.STOP_TIME_MINUTES / 60.0)
                 total_time = base_time + stop_time_hours
-                
+
                 if total_time <= self.MAX_ROUTE_TIME_HOURS:
                     compliant_routes += 1
                 else:
@@ -415,9 +414,9 @@ class BusinessValidator:
                         f"Route {route.id}: Total time {total_time:.2f}h exceeds limit {self.MAX_ROUTE_TIME_HOURS}h "
                         f"(Drive: {base_time:.2f}h, Stops: {stop_time_hours:.2f}h)"
                     )
-            
+
             compliance_rate = (compliant_routes / total_routes * 100) if total_routes > 0 else 100
-            
+
             if len(violations) == 0:
                 status = ValidationStatus.PASSED
                 details = f"All {total_routes} routes comply with 10-hour time limit"
@@ -427,7 +426,7 @@ class BusinessValidator:
             else:
                 status = ValidationStatus.FAILED
                 details = f"Only {compliance_rate:.1f}% of routes comply with time constraint"
-            
+
             metrics = {
                 "max_route_time_hours": self.MAX_ROUTE_TIME_HOURS,
                 "stop_time_minutes": self.STOP_TIME_MINUTES,
@@ -436,7 +435,7 @@ class BusinessValidator:
                 "violations_count": len(violations),
                 "compliance_rate_percent": compliance_rate
             }
-            
+
             recommendations = []
             if violations:
                 recommendations.extend([
@@ -444,7 +443,7 @@ class BusinessValidator:
                     "Consider splitting long routes into multiple shorter routes",
                     "Optimize route planning to minimize driving time"
                 ])
-            
+
             report = ValidationReport(
                 requirement_id="1.4",
                 requirement_description="Maintain 10-hour maximum route time with 15-minute stops",
@@ -455,10 +454,10 @@ class BusinessValidator:
                 test_data_used={"routes_analyzed": total_routes},
                 recommendations=recommendations
             )
-            
+
             self.validation_history.append(report)
             return report
-            
+
         except Exception as e:
             return ValidationReport(
                 requirement_id="1.4",
@@ -469,24 +468,24 @@ class BusinessValidator:
                 timestamp=start_time,
                 recommendations=["Fix system errors before time validation"]
             )
-    
+
     def validate_contract_compliance(self, routes: List[Route]) -> ValidationReport:
         """
         Validate Requirement 1.5: System preserves all 5 contract routes
-        
+
         Args:
             routes: List of current routes
-            
+
         Returns:
             ValidationReport with contract compliance analysis
         """
         start_time = datetime.now()
-        
+
         try:
             # Extract route destinations (this is simplified - in real system would need proper mapping)
             route_destinations = []
             missing_destinations = []
-            
+
             # Check if we have the required number of routes
             if len(routes) < self.REQUIRED_CONTRACT_ROUTES:
                 status = ValidationStatus.FAILED
@@ -496,21 +495,21 @@ class BusinessValidator:
                 # For this validation, we assume the first 5 routes are the contract routes
                 # In a real system, routes would have destination names or identifiers
                 contract_routes_count = min(len(routes), self.REQUIRED_CONTRACT_ROUTES)
-                
+
                 if contract_routes_count == self.REQUIRED_CONTRACT_ROUTES:
                     status = ValidationStatus.PASSED
                     details = f"All {self.REQUIRED_CONTRACT_ROUTES} contract routes are preserved"
                 else:
                     status = ValidationStatus.FAILED
                     details = f"Only {contract_routes_count} of {self.REQUIRED_CONTRACT_ROUTES} contract routes found"
-            
+
             metrics = {
                 "required_contract_routes": self.REQUIRED_CONTRACT_ROUTES,
                 "current_routes_count": len(routes),
                 "contract_routes_preserved": min(len(routes), self.REQUIRED_CONTRACT_ROUTES),
                 "missing_routes_count": len(missing_destinations)
             }
-            
+
             recommendations = []
             if status != ValidationStatus.PASSED:
                 recommendations.extend([
@@ -518,7 +517,7 @@ class BusinessValidator:
                     "Implement route preservation checks before system modifications",
                     "Add route identification system to track contract vs. additional routes"
                 ])
-            
+
             report = ValidationReport(
                 requirement_id="1.5",
                 requirement_description="Preserve all 5 contract routes to required destinations",
@@ -529,10 +528,10 @@ class BusinessValidator:
                 test_data_used={"routes_analyzed": len(routes)},
                 recommendations=recommendations
             )
-            
+
             self.validation_history.append(report)
             return report
-            
+
         except Exception as e:
             return ValidationReport(
                 requirement_id="1.5",
@@ -543,39 +542,39 @@ class BusinessValidator:
                 timestamp=start_time,
                 recommendations=["Fix system errors before contract compliance validation"]
             )
-    
-    def validate_all_requirements(self, orders: List[Order], routes: List[Route], 
+
+    def validate_all_requirements(self, orders: List[Order], routes: List[Route],
                                 trucks: List[Truck], baseline_daily_loss: float = 388.15) -> List[ValidationReport]:
         """
         Run all business requirement validations
-        
+
         Args:
             orders: List of orders to validate
             routes: List of routes to validate
             trucks: List of trucks to validate
             baseline_daily_loss: Original daily loss amount
-            
+
         Returns:
             List of ValidationReport objects for all requirements
         """
         reports = []
-        
+
         # Validate each requirement
         reports.append(self.validate_profitability_requirements(routes, baseline_daily_loss))
         reports.append(self.validate_proximity_constraint(orders, routes))
         reports.append(self.validate_capacity_constraints(orders, trucks))
         reports.append(self.validate_time_constraints(routes))
         reports.append(self.validate_contract_compliance(routes))
-        
+
         return reports
-    
+
     def generate_summary_report(self, validation_reports: List[ValidationReport]) -> Dict:
         """
         Generate a summary of all validation results
-        
+
         Args:
             validation_reports: List of validation reports
-            
+
         Returns:
             Dictionary with summary statistics
         """
@@ -583,11 +582,11 @@ class BusinessValidator:
         passed_count = sum(1 for r in validation_reports if r.status == ValidationStatus.PASSED)
         failed_count = sum(1 for r in validation_reports if r.status == ValidationStatus.FAILED)
         warning_count = sum(1 for r in validation_reports if r.status == ValidationStatus.WARNING)
-        
+
         overall_status = "PASSED" if failed_count == 0 else "FAILED"
         if failed_count == 0 and warning_count > 0:
             overall_status = "PASSED_WITH_WARNINGS"
-        
+
         return {
             "overall_status": overall_status,
             "total_requirements": total_requirements,
@@ -605,15 +604,15 @@ class BusinessValidator:
                 for r in validation_reports
             ]
         }
-    
+
     def _calculate_distance(self, loc1: Location, loc2: Location) -> float:
         """
         Calculate distance between two locations using Haversine formula
-        
+
         Args:
             loc1: First location
             loc2: Second location
-            
+
         Returns:
             Distance in kilometers
         """

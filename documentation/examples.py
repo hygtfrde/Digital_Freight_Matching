@@ -9,10 +9,10 @@ from pathlib import Path
 
 class ExamplesGenerator:
     """Generates examples and tutorials"""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-    
+
     def generate(self) -> str:
         """Generate examples and tutorials"""
         content = """# Digital Freight Matching System - Examples and Tutorials
@@ -181,7 +181,7 @@ with Session(engine) as session:
     order = session.get(Order, 13)
     route = session.get(Route, 1)
     truck = session.get(Truck, 1)
-    
+
     result = processor.validate_order_for_route(order, route, truck)
     print(f'Valid: {result.is_valid}')
     for error in result.errors:
@@ -202,7 +202,7 @@ from sqlmodel import Session, select
 with Session(engine) as session:
     routes = session.exec(select(Route)).all()
     total_loss = sum(r.profitability for r in routes)
-    
+
     print('Current Route Performance:')
     for route in routes:
         print(f'Route {route.id}: \${route.profitability:.2f}')
@@ -287,13 +287,13 @@ from sqlmodel import Session, select
 
 with Session(engine) as session:
     validator = BusinessValidator()
-    
+
     orders = session.exec(select(Order)).all()
     routes = session.exec(select(Route)).all()
     trucks = session.exec(select(Truck)).all()
-    
+
     reports = validator.validate_all_requirements(orders, routes, trucks)
-    
+
     print('Business Requirements Validation:')
     for report in reports:
         print(f'Requirement {report.requirement_id}: {report.status.value.upper()}')
@@ -315,18 +315,18 @@ from sqlmodel import Session, select
 
 with Session(engine) as session:
     assessor = PerformanceAssessor()
-    
+
     orders = session.exec(select(Order)).all()[:5]
     routes = session.exec(select(Route)).all()
     trucks = session.exec(select(Truck)).all()
-    
+
     metrics = assessor.profile_order_processing(orders, routes, trucks)
-    
+
     print('Performance Assessment:')
     print(f'Execution Time: {metrics.execution_time_ms:.1f}ms')
     print(f'Memory Usage: {metrics.memory_usage_mb:.1f}MB')
     print(f'Success: {metrics.success}')
-    
+
     meets_req = metrics.execution_time_ms <= 5000
     print(f'Meets 5-second requirement: {meets_req}')
 "
@@ -366,7 +366,7 @@ from schemas.schemas import Truck, Cargo, Package, CargoType
 
 # Standard truck
 standard_truck = Truck(
-    id=1, capacity=48.0, autonomy=800.0, type='standard', 
+    id=1, capacity=48.0, autonomy=800.0, type='standard',
     routes=[], cargo_loads=[]
 )
 
@@ -469,23 +469,23 @@ import requests
 class DFMIntegration:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
-    
-    def process_order(self, pickup_lat, pickup_lng, delivery_lat, delivery_lng, 
+
+    def process_order(self, pickup_lat, pickup_lng, delivery_lat, delivery_lng,
                      cargo_volume, cargo_weight, client_name):
         # Create client
-        client_resp = requests.post(f"{self.base_url}/clients", 
+        client_resp = requests.post(f"{self.base_url}/clients",
                                   json={"name": client_name})
         client_id = client_resp.json()["id"]
-        
+
         # Create locations
         pickup_resp = requests.post(f"{self.base_url}/locations",
                                   json={"lat": pickup_lat, "lng": pickup_lng})
         pickup_id = pickup_resp.json()["id"]
-        
+
         delivery_resp = requests.post(f"{self.base_url}/locations",
                                     json={"lat": delivery_lat, "lng": delivery_lng})
         delivery_id = delivery_resp.json()["id"]
-        
+
         # Create order
         order_resp = requests.post(f"{self.base_url}/orders", json={
             "location_origin_id": pickup_id,
@@ -494,12 +494,12 @@ class DFMIntegration:
             "contract_type": "third_party"
         })
         order_id = order_resp.json()["id"]
-        
+
         # Add cargo
         cargo_resp = requests.post(f"{self.base_url}/cargo",
                                  json={"order_id": order_id})
         cargo_id = cargo_resp.json()["id"]
-        
+
         # Add package
         requests.post(f"{self.base_url}/packages", json={
             "volume": cargo_volume,
@@ -507,7 +507,7 @@ class DFMIntegration:
             "type": "standard",
             "cargo_id": cargo_id
         })
-        
+
         return order_id
 
 # Usage
@@ -523,9 +523,9 @@ print(f"Created order: {order_id}")
 
 This comprehensive tutorial collection provides practical guidance for all major system operations and real-world scenarios.
 """
-        
+
         file_path = self.output_dir / "examples-and-tutorials.md"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         return str(file_path)
