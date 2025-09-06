@@ -6,6 +6,7 @@ uvicorn>=0.20.0
 pydantic
 sqlmodel
 fastapi
+psutil
 
 # Additional dependencies
 pydantic>=2.0.0

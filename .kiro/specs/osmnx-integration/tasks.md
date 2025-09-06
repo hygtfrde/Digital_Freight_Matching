@@ -82,13 +82,6 @@
   - Write tests for improved route matching accuracy
   - _Requirements: 5.1, 5.2_
 
-- [ ] 6.2 Update PricingService route optimization
-  - Enhance route profitability calculations with accurate distances
-  - Update order matching logic to use road-based deviations
-  - Add route optimization considering actual drive times
-  - Write integration tests for end-to-end order processing
-  - _Requirements: 5.3, 5.4_
-
 - [ ] 7. Add performance monitoring and optimization
 - [ ] 7.1 Implement caching and performance monitoring
   - Add metrics collection for OSMnx vs fallback usage

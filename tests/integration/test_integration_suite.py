@@ -38,7 +38,6 @@ from app.database import (
     Client, Location, Order, Route, Truck, Cargo, Package, CargoType
 )
 from order_processor import OrderProcessor, ValidationResult, ProcessingResult
-from dfm import PricingService, CriteriaMatcher
 from validation.business_validator import BusinessValidator, ValidationStatus
 from db_manager import DatabaseManager
 

@@ -59,10 +59,10 @@ python db_manager.py verify
 
 ### 4. Use the System
 ```bash
-# Interactive CLI Dashboard
-python cli_dashboard.py
+# Interactive CLI Menu App
+python cli_menu_app/main.py
 
-# Or start API server
+# Or start API server (runs on port 8000)
 python app/main.py
 ```
 
@@ -87,20 +87,44 @@ python db_manager.py verify
 python db_manager.py reset --confirm
 ```
 
-## Interactive CLI Dashboard
+## Interactive CLI Menu App
 
-The `cli_dashboard.py` provides a comprehensive interactive interface:
+The CLI Menu App (`cli_menu_app/main.py`) provides a modern, modular interactive interface:
 
 ```bash
-# Launch interactive dashboard
-python cli_dashboard.py
+# Launch with default settings (auto-detects best connection mode)
+python cli_menu_app/main.py
+
+# Force direct database mode
+python cli_menu_app/main.py --mode=direct
+
+# API mode (requires running API server on port 8000)
+python cli_menu_app/main.py --mode=api --api-url=http://localhost:8000
+
+# Production environment
+python cli_menu_app/main.py --environment=production
 ```
 
 **Features:**
-- **Database Management** - Initialize, verify, reset database
-- **System Status & Reports** - Comprehensive analytics and metrics
-- **System Operations** - Configuration and data management
-- **Real-time Monitoring** - Live system status and health checks
+- **Full CRUD Operations** - Create, read, update, delete all entities (trucks, orders, locations, routes, clients, packages, cargo)
+- **Hybrid Data Access** - Works with both direct database and API modes
+- **Interactive Menu Navigation** - User-friendly menu system with color-coded UI
+- **Safety Features** - Confirmation prompts for destructive operations
+- **Configuration Management** - Flexible configuration options
+
+## API Server Setup
+
+To use the CLI Menu App in API mode, first start the API server:
+
+```bash
+# Start API server (runs on port 8000)
+python app/main.py
+
+# In another terminal, run CLI Menu App in API mode
+python cli_menu_app/main.py --mode=api --api-url=http://localhost:8000
+```
+
+The API server provides RESTful endpoints for all entities and automatically initializes the database if needed.
 
 ## System Architecture
 
@@ -112,10 +136,11 @@ User Input → Validation → Business Logic (DFM) → Database → Feedback
 
 ### Core Components
 
+- **CLI Menu App** (`cli_menu_app/`): Modern modular CLI interface with hybrid data access
 - **Database Manager** (`db_manager.py`): Unified database operations and CLI
 - **Data Models** (`app/database.py`): SQLModel-based entities
 - **Business Logic** (`dfm.py`): Route matching and optimization algorithms
-- **API Layer** (`app/main.py`): FastAPI REST endpoints
+- **API Layer** (`app/main.py`): FastAPI REST endpoints (port 8000)
 - **Database** (`logistics.db`): SQLite with contract and order data
 
 ## Database Schema
@@ -155,11 +180,16 @@ Location ← Order → Route → Truck
 ```
 ├── app/
 │   ├── database.py          # Data models and database setup
-│   └── main.py             # FastAPI application
+│   └── main.py             # FastAPI application (port 8000)
+├── cli_menu_app/
+│   ├── main.py             # CLI Menu App entry point
+│   ├── menu_system.py      # Menu navigation logic
+│   ├── crud_operations.py  # CRUD operations for all entities
+│   ├── data_service.py     # Hybrid data access (API/direct DB)
+│   └── ui_components.py    # UI utilities and colors
 ├── schemas/
 │   └── schemas.py          # Pydantic schemas with business logic
 ├── db_manager.py           # Unified database manager and CLI
-├── cli_dashboard.py        # Interactive CLI dashboard
 ├── test_db_manager.py      # Comprehensive test suite
 ├── dfm.py                  # Core business logic
 ├── utils.py                # Utility functions
@@ -178,8 +208,8 @@ python test_db_manager.py
 # Test business logic  
 python dfm.py
 
-# Interactive system management
-python cli_dashboard.py
+# Interactive CLI Menu App
+python cli_menu_app/main.py
 ```
 
 ### Database Operations
