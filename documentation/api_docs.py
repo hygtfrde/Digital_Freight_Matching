@@ -9,10 +9,10 @@ from pathlib import Path
 
 class APIDocsGenerator:
     """Generates API documentation"""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-    
+
     def generate(self) -> str:
         """Generate API documentation"""
         content = """# Digital Freight Matching System - API Documentation
@@ -36,7 +36,7 @@ All responses follow consistent JSON format:
 ```json
 {
   "data": {...},
-  "status": "success|error", 
+  "status": "success|error",
   "message": "Description",
   "timestamp": "2024-01-01T12:00:00Z"
 }
@@ -372,7 +372,7 @@ curl http://localhost:8000/analytics/summary
 
 ### HTTP Status Codes
 - `200 OK`: Successful GET requests
-- `201 Created`: Successful POST requests  
+- `201 Created`: Successful POST requests
 - `400 Bad Request`: Invalid input data
 - `404 Not Found`: Resource not found
 - `500 Internal Server Error`: Server errors
@@ -411,7 +411,7 @@ import requests
 class DFMClient:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
-    
+
     def create_order(self, origin_id, destiny_id, client_id):
         response = requests.post(f"{self.base_url}/orders", json={
             "location_origin_id": origin_id,
@@ -419,7 +419,7 @@ class DFMClient:
             "client_id": client_id
         })
         return response.json()
-    
+
     def get_analytics(self):
         response = requests.get(f"{self.base_url}/analytics/summary")
         return response.json()
@@ -433,25 +433,25 @@ print(f"Daily P&L: ${analytics['financial']['total_daily_loss']}")
 ### JavaScript SDK
 ```javascript
 class DFMClient {
-    constructor(baseUrl = 'http://localhost:8000') {
-        this.baseUrl = baseUrl;
+    constructor(base_Url = 'http://localhost:8000') {
+        this.base_Url = base_Url;
     }
-    
-    async createOrder(originId, destinyId, clientId) {
-        const response = await fetch(`${this.baseUrl}/orders`, {
+
+    async create_Order(origin_Id, destiny_Id, client_Id) {
+        const response = await fetch(`${this.base_Url}/orders`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                location_origin_id: originId,
-                location_destiny_id: destinyId,
-                client_id: clientId
+                location_origin_id: origin_Id,
+                location_destiny_id: destiny_Id,
+                client_id: client_Id
             })
         });
         return response.json();
     }
-    
-    async getAnalytics() {
-        const response = await fetch(`${this.baseUrl}/analytics/summary`);
+
+    async get_Analytics() {
+        const response = await fetch(`${this.base_Url}/analytics/summary`);
         return response.json();
     }
 }
@@ -485,9 +485,9 @@ class DFMClient {
 - Set up health check endpoints
 - Implement proper error tracking
 """
-        
+
         file_path = self.output_dir / "api-documentation.md"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         return str(file_path)

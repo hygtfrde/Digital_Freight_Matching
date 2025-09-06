@@ -2,7 +2,6 @@
 import logging
 from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 from sqlmodel import Session
 

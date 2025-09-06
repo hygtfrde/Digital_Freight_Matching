@@ -9,10 +9,10 @@ from pathlib import Path
 
 class TechnicalDocsGenerator:
     """Generates technical documentation"""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-    
+
     def generate(self) -> str:
         """Generate technical documentation"""
         content = """# Digital Freight Matching System - Technical Documentation
@@ -75,19 +75,19 @@ def match_order_to_route(order: Order, route: Route, truck: Truck) -> Validation
     # Stage 1: Geographic Proximity (≤1km)
     if not validate_proximity_constraint(order, route):
         return ValidationResult.INVALID_PROXIMITY
-    
+
     # Stage 2: Capacity (48m³, 9180 lbs)
     if not validate_capacity_constraint(order, truck):
         return ValidationResult.INVALID_CAPACITY
-    
+
     # Stage 3: Time (≤10 hours including stops)
     if not validate_time_constraint(route, order):
         return ValidationResult.INVALID_TIME
-    
+
     # Stage 4: Cargo Compatibility
     if not validate_cargo_compatibility(order, truck):
         return ValidationResult.INCOMPATIBLE_CARGO
-    
+
     return ValidationResult.VALID
 ```
 
@@ -100,8 +100,8 @@ def haversine_distance(lat1, lng1, lat2, lng2) -> float:
     R = 6371  # Earth radius in km
     dlat = math.radians(lat2 - lat1)
     dlng = math.radians(lng2 - lng1)
-    a = (math.sin(dlat/2)**2 + 
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * 
+    a = (math.sin(dlat/2)**2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
          math.sin(dlng/2)**2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
@@ -112,16 +112,16 @@ def haversine_distance(lat1, lng1, lat2, lng2) -> float:
 ```python
 def optimize_route_profitability(route: Route, orders: List[Order]) -> float:
     baseline_cost = route.base_distance() * COST_PER_KM
-    
+
     best_profit = 0
     for order_combination in valid_combinations(orders, route):
         revenue = len(order_combination) * REVENUE_PER_ORDER
         additional_cost = calculate_detour_costs(order_combination, route)
         net_profit = revenue - baseline_cost - additional_cost
-        
+
         if net_profit > best_profit:
             best_profit = net_profit
-    
+
     return best_profit
 ```
 
@@ -147,7 +147,7 @@ class Location(SQLModel, table=True):
     lat: float  # Latitude
     lng: float  # Longitude
     marked: bool = False
-    
+
     def distance_to(self, other: "Location") -> float:
         # Haversine formula implementation
 ```
@@ -160,7 +160,7 @@ class Order(SQLModel, table=True):
     location_destiny_id: int = Field(foreign_key="location.id")
     client_id: Optional[int] = Field(foreign_key="client.id")
     route_id: Optional[int] = Field(foreign_key="route.id")
-    
+
     def total_volume(self) -> float:
         return sum(c.total_volume() for c in self.cargo)
 ```
@@ -172,7 +172,7 @@ class Truck(SQLModel, table=True):
     capacity: float  # 48m³ max per business requirements
     autonomy: float  # Range in km
     type: str  # "standard", "refrigerated", "hazmat"
-    
+
     def available_capacity(self) -> float:
         used = sum(cargo.total_volume() for cargo in self.cargo_loads)
         return self.capacity - used
@@ -184,7 +184,7 @@ class Truck(SQLModel, table=True):
 
 #### SQLModel ORM
 **Decision**: Use SQLModel for database operations and API validation.
-**Rationale**: 
+**Rationale**:
 - Type safety with Python type hints
 - Code reuse between database and API models
 - Excellent FastAPI integration
@@ -284,9 +284,9 @@ Consider splitting into services:
 - Integration with external routing services
 - Advanced spatial indexing for large-scale operations
 """
-        
+
         file_path = self.output_dir / "technical-guide.md"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         return str(file_path)

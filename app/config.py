@@ -13,7 +13,7 @@ from typing import Dict, Any
 def setup_logging(level: str = "INFO") -> None:
     """
     Set up logging configuration for the application.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
@@ -25,12 +25,12 @@ def setup_logging(level: str = "INFO") -> None:
             logging.FileHandler('dfm.log', mode='a')
         ]
     )
-    
+
     # Set specific logger levels
     logging.getLogger('osmnx').setLevel(logging.WARNING)
     logging.getLogger('networkx').setLevel(logging.WARNING)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
-    
+
     logger = logging.getLogger(__name__)
     logger.info("Logging configured successfully")
 
@@ -38,7 +38,7 @@ def setup_logging(level: str = "INFO") -> None:
 def get_osmnx_config() -> Dict[str, Any]:
     """
     Get OSMnx configuration settings.
-    
+
     Returns:
         Dictionary containing OSMnx configuration parameters
     """
@@ -46,47 +46,36 @@ def get_osmnx_config() -> Dict[str, Any]:
         # Cache settings
         "cache_enabled": os.getenv("OSMNX_CACHE_ENABLED", "true").lower() == "true",
         "cache_max_age_hours": int(os.getenv("OSMNX_CACHE_MAX_AGE_HOURS", "24")),
-        
+
         # Network settings
         "network_timeout_seconds": int(os.getenv("OSMNX_NETWORK_TIMEOUT", "30")),
         "network_type": os.getenv("OSMNX_NETWORK_TYPE", "drive"),
-        
+
         # Fallback settings
         "fallback_speed_kmh": float(os.getenv("OSMNX_FALLBACK_SPEED", "80.0")),
-        
+
         # Bounding box settings
         "base_padding_km": float(os.getenv("OSMNX_BASE_PADDING", "10.0")),
         "min_padding_km": float(os.getenv("OSMNX_MIN_PADDING", "5.0")),
         "max_padding_km": float(os.getenv("OSMNX_MAX_PADDING", "50.0")),
         "adaptive_padding": os.getenv("OSMNX_ADAPTIVE_PADDING", "true").lower() == "true",
-        
+
         # Performance settings
         "batch_size": int(os.getenv("OSMNX_BATCH_SIZE", "10")),
         "max_retries": int(os.getenv("OSMNX_MAX_RETRIES", "3")),
-        
+
         # Development settings
         "debug_mode": os.getenv("OSMNX_DEBUG", "false").lower() == "true",
         "log_level": os.getenv("OSMNX_LOG_LEVEL", "INFO").upper()
     }
 
 
-def get_database_config() -> Dict[str, Any]:
-    """
-    Get database configuration settings.
-    
-    Returns:
-        Dictionary containing database configuration parameters
-    """
-    return {
-        "database_url": os.getenv("DATABASE_URL", "sqlite:///logistics.db"),
-        "echo": os.getenv("DB_ECHO", "false").lower() == "true"
-    }
 
 
 def get_api_config() -> Dict[str, Any]:
     """
     Get API configuration settings.
-    
+
     Returns:
         Dictionary containing API configuration parameters
     """
