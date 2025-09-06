@@ -92,7 +92,7 @@ python db_manager.py reset --confirm
 The CLI Menu App (`cli_menu_app/main.py`) provides a modern, modular interactive interface:
 
 ```bash
-# Launch with default settings (auto-detects best connection mode)
+# Launch API with default settings (auto-detects best connection mode)
 python cli_menu_app/main.py
 
 # Force direct database mode
