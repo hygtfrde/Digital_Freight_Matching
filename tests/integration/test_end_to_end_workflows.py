@@ -12,7 +12,7 @@ from typing import Dict, Any
 from tests.integration.test_integration_suite import IntegrationTestSuite
 from app.database import Order, Route, Truck, Location, Cargo, Package, CargoType
 from sqlmodel import select
-from order_processor import OrderProcessor
+from order_processor import OrderProcessor, ValidationResult
 
 
 class EndToEndWorkflowTests(IntegrationTestSuite):
@@ -311,8 +311,8 @@ class EndToEndWorkflowTests(IntegrationTestSuite):
             self.session.commit()
 
             package = Package(
-                volume=8.0,  # Small enough to combine
-                weight=150.0,
+                volume=5.0,  # Smaller to ensure combination works
+                weight=100.0,
                 type=CargoType.STANDARD,
                 cargo_id=cargo.id
             )
