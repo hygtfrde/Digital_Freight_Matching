@@ -10,10 +10,10 @@ from pathlib import Path
 
 class UserGuideGenerator:
     """Generates user-focused documentation"""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-    
+
     def generate(self) -> str:
         """Generate user guide"""
         content = """# Digital Freight Matching System - User Guide
@@ -212,9 +212,9 @@ After proper setup:
 - API responses: <500ms for standard endpoints
 - Memory usage: <500MB normal operations
 """
-        
+
         file_path = self.output_dir / "user-guide.md"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         return str(file_path)

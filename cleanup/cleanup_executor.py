@@ -19,60 +19,60 @@ class CleanupExecutor:
     """
     Executes cleanup operations safely with backup and rollback capabilities
     """
-    
+
     def __init__(self, project_root: str = ".", backup_dir: str = "cleanup_backups"):
         """Initialize cleanup executor"""
         self.project_root = Path(project_root)
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(exist_ok=True)
-        
+
         # Create timestamped backup subdirectory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.current_backup = self.backup_dir / f"backup_{timestamp}"
         self.current_backup.mkdir(exist_ok=True)
-        
+
         self.cleanup_log = []
-    
+
     def create_backup(self, file_path: Path) -> Path:
         """Create backup of file before modification"""
         relative_path = file_path.relative_to(self.project_root)
         backup_path = self.current_backup / relative_path
         backup_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         shutil.copy2(file_path, backup_path)
         return backup_path
-    
+
     def remove_unused_imports(self, dead_code_reports: List[DeadCodeReport]) -> int:
         """
         Remove unused imports from files
-        
+
         Returns:
             Number of imports removed
         """
         removed_count = 0
         files_to_process = {}
-        
+
         # Group imports by file
         for report in dead_code_reports:
             if report.item_type == 'import':
                 if report.file_path not in files_to_process:
                     files_to_process[report.file_path] = []
                 files_to_process[report.file_path].append(report)
-        
+
         for file_path, import_reports in files_to_process.items():
             try:
                 file_path_obj = Path(file_path)
-                
+
                 # Create backup
                 self.create_backup(file_path_obj)
-                
+
                 # Read file content
                 with open(file_path_obj, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
-                
+
                 # Remove unused imports (from bottom to top to preserve line numbers)
                 import_reports.sort(key=lambda x: x.line_number, reverse=True)
-                
+
                 for report in import_reports:
                     line_idx = report.line_number - 1
                     if 0 <= line_idx < len(lines):
@@ -82,40 +82,40 @@ class CleanupExecutor:
                             lines.pop(line_idx)
                             removed_count += 1
                             self.cleanup_log.append(f"Removed unused import '{report.item_name}' from {file_path}:{report.line_number}")
-                
+
                 # Write back modified content
                 with open(file_path_obj, 'w', encoding='utf-8') as f:
                     f.writelines(lines)
-                    
+
             except Exception as e:
                 print(f"Warning: Could not process {file_path}: {e}")
-        
+
         return removed_count
-    
+
     def remove_dead_functions(self, dead_code_reports: List[DeadCodeReport]) -> int:
         """
         Remove unused functions and classes
-        
+
         Returns:
             Number of items removed
         """
         removed_count = 0
-        
+
         for report in dead_code_reports:
             if report.item_type in ['function', 'class']:
                 try:
                     file_path_obj = Path(report.file_path)
-                    
+
                     # Create backup
                     self.create_backup(file_path_obj)
-                    
+
                     # Parse AST to find exact function/class boundaries
                     with open(file_path_obj, 'r', encoding='utf-8') as f:
                         content = f.read()
                         lines = content.splitlines()
-                    
+
                     tree = ast.parse(content)
-                    
+
                     # Find the node to remove
                     node_to_remove = None
                     for node in ast.walk(tree):
@@ -124,171 +124,171 @@ class CleanupExecutor:
                             if node.name == report.item_name and node.lineno == report.line_number:
                                 node_to_remove = node
                                 break
-                    
+
                     if node_to_remove:
                         # Remove lines from start to end of node
                         start_line = node_to_remove.lineno - 1
                         end_line = getattr(node_to_remove, 'end_lineno', start_line + 1) - 1
-                        
+
                         # Remove the lines
                         del lines[start_line:end_line + 1]
-                        
+
                         # Write back
                         with open(file_path_obj, 'w', encoding='utf-8') as f:
                             f.write('\n'.join(lines) + '\n')
-                        
+
                         removed_count += 1
                         self.cleanup_log.append(f"Removed unused {report.item_type} '{report.item_name}' from {report.file_path}")
-                
+
                 except Exception as e:
                     print(f"Warning: Could not remove {report.item_type} '{report.item_name}' from {report.file_path}: {e}")
-        
+
         return removed_count
-    
+
     def consolidate_duplicates(self, duplicate_reports: List[DuplicateReport]) -> int:
         """
         Consolidate duplicate functions by keeping one and replacing others with calls
-        
+
         Returns:
             Number of duplicates consolidated
         """
         consolidated_count = 0
-        
+
         # Group duplicates by function name
         duplicate_groups = {}
         for report in duplicate_reports:
             if report.function_name not in duplicate_groups:
                 duplicate_groups[report.function_name] = []
             duplicate_groups[report.function_name].append(report)
-        
+
         for func_name, duplicates in duplicate_groups.items():
             if len(duplicates) < 2:
                 continue
-            
+
             try:
                 # Keep the first occurrence, remove others
                 primary_duplicate = duplicates[0]
-                
+
                 for i in range(1, len(duplicates)):
                     duplicate = duplicates[i]
-                    
+
                     # Create backup
                     file_path_obj = Path(duplicate.file2)
                     self.create_backup(file_path_obj)
-                    
+
                     # For now, just add a comment indicating the duplicate
                     # In a full implementation, this would replace with function calls
                     with open(file_path_obj, 'r', encoding='utf-8') as f:
                         content = f.read()
-                    
+
                     # Add comment about duplicate
                     comment = f"# TODO: This function '{func_name}' is duplicated in {Path(primary_duplicate.file1).name}\n"
-                    
+
                     # Find function definition and add comment
                     lines = content.splitlines()
                     for j, line in enumerate(lines):
                         if f"def {func_name}" in line:
                             lines.insert(j, comment)
                             break
-                    
+
                     with open(file_path_obj, 'w', encoding='utf-8') as f:
                         f.write('\n'.join(lines) + '\n')
-                    
+
                     consolidated_count += 1
                     self.cleanup_log.append(f"Marked duplicate function '{func_name}' in {duplicate.file2}")
-            
+
             except Exception as e:
                 print(f"Warning: Could not consolidate duplicate '{func_name}': {e}")
-        
+
         return consolidated_count
-    
+
     def fix_naming_conventions(self) -> int:
         """
         Fix basic naming convention issues
-        
+
         Returns:
             Number of fixes applied
         """
         fixes_count = 0
-        
+
         for file_path in self.project_root.rglob("*.py"):
             # Skip excluded directories
             if any(pattern in str(file_path) for pattern in [".git", "__pycache__", "venv", ".venv"]):
                 continue
-            
+
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                
+
                 original_content = content
-                
+
                 # Fix common naming issues
                 # Convert camel_Case variables to snake_case (simple cases)
                 content = re.sub(r'\b([a-z]+)([A-Z][a-z]+)\b', r'\1_\2', content)
-                
+
                 if content != original_content:
                     # Create backup
                     self.create_backup(file_path)
-                    
+
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
-                    
+
                     fixes_count += 1
                     self.cleanup_log.append(f"Fixed naming conventions in {file_path}")
-            
+
             except Exception as e:
                 print(f"Warning: Could not fix naming in {file_path}: {e}")
-        
+
         return fixes_count
-    
+
     def remove_empty_files(self) -> int:
         """
         Remove empty Python files (except __init__.py)
-        
+
         Returns:
             Number of files removed
         """
         removed_count = 0
-        
+
         for file_path in self.project_root.rglob("*.py"):
             if file_path.name == "__init__.py":
                 continue
-            
+
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
-                
+
                 # Check if file is effectively empty (only comments/whitespace)
                 lines = [line.strip() for line in content.splitlines()]
                 non_empty_lines = [line for line in lines if line and not line.startswith('#')]
-                
+
                 if len(non_empty_lines) == 0:
                     # Create backup
                     self.create_backup(file_path)
-                    
+
                     # Remove file
                     file_path.unlink()
                     removed_count += 1
                     self.cleanup_log.append(f"Removed empty file {file_path}")
-            
+
             except Exception as e:
                 print(f"Warning: Could not check {file_path}: {e}")
-        
+
         return removed_count
-    
+
     def execute_full_cleanup(self) -> Dict[str, int]:
         """
         Execute comprehensive cleanup
-        
+
         Returns:
             Dictionary with cleanup statistics
         """
         print("🧹 Starting comprehensive codebase cleanup...")
-        
+
         # Run analysis first
         analyzer = CodebaseCleanup(str(self.project_root))
         report = analyzer.generate_cleanup_report()
-        
+
         stats = {
             "unused_imports_removed": 0,
             "dead_functions_removed": 0,
@@ -296,7 +296,7 @@ class CleanupExecutor:
             "naming_fixes": 0,
             "empty_files_removed": 0
         }
-        
+
         try:
             # Remove unused imports
             print("  🗑️  Removing unused imports...")
@@ -311,14 +311,14 @@ class CleanupExecutor:
                     suggestions=item["suggestions"]
                 ))
             stats["unused_imports_removed"] = self.remove_unused_imports(dead_code)
-            
+
             # Remove dead functions (be conservative)
             print("  ⚠️  Removing obviously unused functions...")
             dead_functions = [item for item in dead_code if item.item_type in ['function', 'class']]
             # Only remove functions that are clearly unused and safe to remove
             safe_to_remove = [item for item in dead_functions if not item.item_name.startswith('test_')]
             stats["dead_functions_removed"] = self.remove_dead_functions(safe_to_remove[:5])  # Limit to 5 for safety
-            
+
             # Consolidate duplicates (mark for now)
             print("  🔄 Marking duplicate functions...")
             duplicates = []
@@ -331,21 +331,21 @@ class CleanupExecutor:
                     line_count=item["lines"]
                 ))
             stats["duplicates_consolidated"] = self.consolidate_duplicates(duplicates[:10])  # Limit for safety
-            
+
             # Fix naming conventions
             print("  ✨ Fixing naming conventions...")
             stats["naming_fixes"] = self.fix_naming_conventions()
-            
+
             # Remove empty files
             print("  📁 Removing empty files...")
             stats["empty_files_removed"] = self.remove_empty_files()
-            
+
         except Exception as e:
             print(f"❌ Cleanup failed: {e}")
             stats["error"] = str(e)
-        
+
         return stats
-    
+
     def generate_cleanup_summary(self, stats: Dict[str, int]) -> str:
         """Generate cleanup summary report"""
         summary = f"""
@@ -362,38 +362,38 @@ Cleanup Results:
 
 Detailed Log:
 """
-        
+
         for log_entry in self.cleanup_log:
             summary += f"  - {log_entry}\n"
-        
+
         summary += f"\n💾 Backup created at: {self.current_backup}"
         summary += f"\n🔄 To rollback changes, restore files from backup directory"
-        
+
         return summary
 
 
 def main():
     """Execute codebase cleanup"""
     print("=== Digital Freight Matching Codebase Cleanup Executor ===")
-    
+
     executor = CleanupExecutor()
     stats = executor.execute_full_cleanup()
-    
+
     if "error" in stats:
         print(f"❌ Cleanup failed: {stats['error']}")
         return
-    
+
     # Generate and display summary
     summary = executor.generate_cleanup_summary(stats)
     print(summary)
-    
+
     # Save summary to file
     summary_file = executor.current_backup / "cleanup_summary.txt"
     with open(summary_file, 'w', encoding='utf-8') as f:
         f.write(summary)
-    
+
     print(f"\n✅ Cleanup complete! Summary saved to: {summary_file}")
-    
+
     return stats
 
 

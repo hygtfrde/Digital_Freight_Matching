@@ -9,10 +9,10 @@ from pathlib import Path
 
 class DeploymentGuideGenerator:
     """Generates deployment documentation"""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-    
+
     def generate(self) -> str:
         """Generate deployment guide"""
         content = """# Digital Freight Matching System - Deployment Guide
@@ -190,9 +190,9 @@ sudo tee /etc/nginx/sites-available/dfm << EOF
 server {
     listen 80;
     server_name your-domain.com;
-    
+
     client_max_body_size 10M;
-    
+
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
@@ -200,7 +200,7 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
-    
+
     location /health {
         access_log off;
         proxy_pass http://127.0.0.1:8000/;
@@ -494,9 +494,9 @@ sqlite3 production.db "EXPLAIN QUERY PLAN SELECT * FROM route;"
 
 This deployment guide provides comprehensive instructions for various deployment scenarios from development to production cloud environments.
 """
-        
+
         file_path = self.output_dir / "deployment-guide.md"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         return str(file_path)
