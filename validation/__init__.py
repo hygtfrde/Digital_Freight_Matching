@@ -12,7 +12,7 @@ Key Components:
 
 Usage:
     from validation.business_validator import BusinessValidator, ValidationReport
-    
+
     validator = BusinessValidator()
     reports = validator.validate_all_requirements(orders, routes, trucks)
     summary = validator.generate_summary_report(reports)
@@ -27,7 +27,7 @@ from .business_validator import (
 
 __all__ = [
     'BusinessValidator',
-    'ValidationReport', 
+    'ValidationReport',
     'PerformanceReport',
     'ValidationStatus'
 ]

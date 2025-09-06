@@ -71,7 +71,7 @@ def update_order(order_id: int, order_data: OrderInput, session: Session = Depen
     db_order = session.get(Order, order_id)
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     # Update only basic fields to avoid relationship issues
     if order_data.location_origin_id:
         db_order.location_origin_id = order_data.location_origin_id
@@ -81,7 +81,7 @@ def update_order(order_id: int, order_data: OrderInput, session: Session = Depen
         db_order.client_id = order_data.client_id
     if order_data.contract_type is not None:
         db_order.contract_type = order_data.contract_type
-    
+
     session.add(db_order)
     session.commit()
     session.refresh(db_order)
@@ -148,14 +148,14 @@ def update_truck(truck_id: int, truck_data: TruckInput, session: Session = Depen
     db_truck = session.get(Truck, truck_id)
     if not db_truck:
         raise HTTPException(status_code=404, detail="Truck not found")
-    
+
     if truck_data.type:
         db_truck.type = truck_data.type
     if truck_data.capacity:
         db_truck.capacity = truck_data.capacity
     if truck_data.autonomy:
         db_truck.autonomy = truck_data.autonomy
-    
+
     session.add(db_truck)
     session.commit()
     session.refresh(db_truck)
@@ -224,7 +224,7 @@ def update_route(route_id: int, route_data: RouteInput, session: Session = Depen
     db_route = session.get(Route, route_id)
     if not db_route:
         raise HTTPException(status_code=404, detail="Route not found")
-    
+
     if route_data.location_origin_id:
         db_route.location_origin_id = route_data.location_origin_id
     if route_data.location_destiny_id:
@@ -233,7 +233,7 @@ def update_route(route_id: int, route_data: RouteInput, session: Session = Depen
         db_route.profitability = route_data.profitability
     if route_data.truck_id is not None:
         db_route.truck_id = route_data.truck_id
-    
+
     session.add(db_route)
     session.commit()
     session.refresh(db_route)
@@ -299,14 +299,14 @@ def update_location(location_id: int, location_data: LocationInput, session: Ses
     db_location = session.get(Location, location_id)
     if not db_location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
     if location_data.lat is not None:
         db_location.lat = location_data.lat
     if location_data.lng is not None:
         db_location.lng = location_data.lng
     if location_data.marked is not None:
         db_location.marked = location_data.marked
-    
+
     session.add(db_location)
     session.commit()
     session.refresh(db_location)
@@ -367,12 +367,12 @@ def update_client(client_id: int, client_data: ClientInput, session: Session = D
     db_client = session.get(Client, client_id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
+
     if client_data.name:
         db_client.name = client_data.name
     if client_data.created_at:
         db_client.created_at = client_data.created_at
-    
+
     session.add(db_client)
     session.commit()
     session.refresh(db_client)
@@ -440,7 +440,7 @@ def update_package(package_id: int, package_data: PackageInput, session: Session
     db_package = session.get(Package, package_id)
     if not db_package:
         raise HTTPException(status_code=404, detail="Package not found")
-    
+
     if package_data.volume is not None:
         db_package.volume = package_data.volume
     if package_data.weight is not None:
@@ -449,7 +449,7 @@ def update_package(package_id: int, package_data: PackageInput, session: Session
         db_package.type = package_data.type
     if package_data.cargo_id is not None:
         db_package.cargo_id = package_data.cargo_id
-    
+
     session.add(db_package)
     session.commit()
     session.refresh(db_package)
@@ -511,12 +511,12 @@ def update_cargo(cargo_id: int, cargo_data: CargoInput, session: Session = Depen
     db_cargo = session.get(Cargo, cargo_id)
     if not db_cargo:
         raise HTTPException(status_code=404, detail="Cargo not found")
-    
+
     if cargo_data.order_id:
         db_cargo.order_id = cargo_data.order_id
     if cargo_data.truck_id is not None:
         db_cargo.truck_id = cargo_data.truck_id
-    
+
     session.add(db_cargo)
     session.commit()
     session.refresh(db_cargo)

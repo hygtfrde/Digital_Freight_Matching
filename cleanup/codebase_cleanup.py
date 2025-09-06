@@ -1,50 +1,43 @@
 """
 Codebase Cleanup and Refactoring Engine
 
-This module provides comprehensive analysis and cleanup capabilities for the
-Digital Freight Matching codebase including:
-- Duplicate code detection across all Python files
-- Dead code analyzer to identify unused functions, classes, and imports
-- Code quality checker validating naming conventions and standards
-- Refactoring suggestions for improved maintainability
+This module implements the CodebaseCleanup class with analysis and cleanup methods
+for identifying and removing redundant code, unused imports, and dead code.
 
 Requirements addressed:
 - 5.1: No duplicate functionality or redundant implementations
 - 5.2: No unused scripts, imports, or dead code
 - 5.3: Clear separation of concerns with consistent naming conventions
-- 5.4: Follow DRY (Don't Repeat Yourself) principles throughout
+- 5.4: DRY (Don't Repeat Yourself) principles throughout
 """
 
-import os
 import ast
-import sys
+import os
 import re
-import math
+import sys
+from dataclasses import dataclass
+from typing import Dict, List, Set, Optional, Tuple
 from pathlib import Path
-from dataclasses import dataclass, field
-from datetime import datetime
 
 
 @dataclass
 class DuplicateReport:
-    """Report for duplicate code detection"""
+    """Report of duplicate code found"""
     file1: str
     file2: str
     function_name: str
     similarity_score: float
     line_count: int
-    duplicate_lines: List[str] = field(default_factory=list)
 
 
 @dataclass
 class DeadCodeReport:
-    """Report for dead code analysis"""
+    """Report of dead code found"""
     file_path: str
     item_type: str  # 'function', 'class', 'import', 'variable'
     item_name: str
     line_number: int
     reason: str
-    suggestions: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -54,8 +47,7 @@ class QualityIssue:
     line_number: int
     issue_type: str
     description: str
-    severity: str  # 'error', 'warning', 'info'
-    suggestion: Optional[str] = None
+    suggestion: str
 
 
 @dataclass
@@ -65,589 +57,418 @@ class QualityReport:
     issues: List[QualityIssue]
     complexity_score: float
     maintainability_index: float
-    suggestions: List[str] = field(default_factory=list)
+    suggestions: List[str]
 
 
 @dataclass
 class RefactoringRecommendation:
-    """Refactoring suggestion"""
+    """Refactoring recommendation"""
     file_path: str
     recommendation_type: str
     description: str
     priority: str  # 'high', 'medium', 'low'
-    estimated_effort: str  # 'small', 'medium', 'large'
-    benefits: List[str] = field(default_factory=list)
+    estimated_effort: str
 
 
 class CodebaseCleanup:
     """
-    Comprehensive codebase cleanup and refactoring engine
-    
-    Analyzes Python codebase for duplicates, dead code, quality issues,
-    and provides refactoring recommendations.
+    Codebase cleanup and refactoring engine
     """
-    
+
     def __init__(self, project_root: str = "."):
-        """Initialize the cleanup engine"""
         self.project_root = Path(project_root)
-        self.ast_cache: Dict[str, ast.AST] = {}
-        
-        # Exclude patterns for analysis
-        self.exclude_patterns = [
-            "__pycache__",
-            ".git",
-            ".pytest_cache",
-            "venv",
-            ".venv",
-            "node_modules",
-            ".kiro"
-        ]
-        
         self.python_files = self._find_python_files()
-    
+        self.import_graph = {}
+        self.function_definitions = {}
+        self.class_definitions = {}
+
     def _find_python_files(self) -> List[Path]:
         """Find all Python files in the project"""
         python_files = []
-        
-        for file_path in self.project_root.rglob("*.py"):
-            # Skip excluded directories
-            if any(pattern in str(file_path) for pattern in self.exclude_patterns):
-                continue
-            python_files.append(file_path)
-        
+        for root, dirs, files in os.walk(self.project_root):
+            # Skip common directories that shouldn't be analyzed
+            dirs[:] = [d for d in dirs if d not in {'.git', '__pycache__', '.pytest_cache', 'venv', '.venv', 'node_modules'}]
+
+            for file in files:
+                if file.endswith('.py'):
+                    python_files.append(Path(root) / file)
         return python_files
-    
-    def _parse_file(self, file_path: Path) -> Optional[ast.AST]:
-        """Parse Python file into AST"""
-        if str(file_path) in self.ast_cache:
-            return self.ast_cache[str(file_path)]
-        
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            tree = ast.parse(content, filename=str(file_path))
-            self.ast_cache[str(file_path)] = tree
-            return tree
-            
-        except (SyntaxError, UnicodeDecodeError) as e:
-            print(f"Warning: Could not parse {file_path}: {e}")
-            return None
-    
+
     def detect_duplicate_code(self) -> List[DuplicateReport]:
         """
-        Detect duplicate code across all Python files
-        
-        Returns:
-            List of DuplicateReport objects
+        Identify duplicate functionality across Python files
         """
         duplicates = []
-        function_signatures = defaultdict(list)
-        
-        # Extract function signatures from all files
+
+        # Build function signature map
+        function_signatures = {}
+
         for file_path in self.python_files:
-            tree = self._parse_file(file_path)
-            if not tree:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                tree = ast.parse(content)
+
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef):
+                        # Create signature based on function name and parameters
+                        params = [arg.arg for arg in node.args.args]
+                        signature = f"{node.name}({', '.join(params)})"
+
+                        if signature in function_signatures:
+                            # Found potential duplicate
+                            original_file = function_signatures[signature]
+                            if original_file != str(file_path):
+                                duplicates.append(DuplicateReport(
+                                    file1=str(original_file),
+                                    file2=str(file_path),
+                                    function_name=node.name,
+                                    similarity_score=0.9,  # Simplified scoring
+                                    line_count=len(node.body)
+                                ))
+                        else:
+                            function_signatures[signature] = str(file_path)
+
+            except (SyntaxError, UnicodeDecodeError) as e:
+                print(f"Warning: Could not parse {file_path}: {e}")
                 continue
-            
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    signature = self._get_function_signature(node)
-                    function_signatures[signature].append((file_path, node))
-        
-        # Find duplicates
-        for signature, occurrences in function_signatures.items():
-            if len(occurrences) > 1:
-                for i in range(len(occurrences)):
-                    for j in range(i + 1, len(occurrences)):
-                        file1, func1 = occurrences[i]
-                        file2, func2 = occurrences[j]
-                        
-                        similarity = self._calculate_similarity(func1, func2)
-                        if similarity > 0.8:  # 80% similarity threshold
-                            duplicates.append(DuplicateReport(
-                                file1=str(file1),
-                                file2=str(file2),
-                                function_name=func1.name,
-                                similarity_score=similarity,
-                                line_count=func2.end_lineno - func2.lineno + 1 if hasattr(func2, 'end_lineno') else 0
-                            ))
-        
+
         return duplicates
-    
+
     def analyze_dead_code(self) -> List[DeadCodeReport]:
         """
-        Analyze codebase for unused functions, classes, and imports
-        
-        Returns:
-            List of DeadCodeReport objects
+        Find unused functions, classes, and imports
         """
         dead_code = []
-        
-        # Build usage map
-        all_definitions = {}
+
+        # Build usage maps
+        all_imports = set()
+        all_definitions = set()
         all_usages = set()
-        
-        # First pass: collect all definitions
+
         for file_path in self.python_files:
-            tree = self._parse_file(file_path)
-            if not tree:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                tree = ast.parse(content)
+
+                # Track imports
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            all_imports.add(alias.name)
+                    elif isinstance(node, ast.ImportFrom):
+                        if node.module:
+                            for alias in node.names:
+                                all_imports.add(f"{node.module}.{alias.name}")
+                    elif isinstance(node, ast.FunctionDef):
+                        all_definitions.add(node.name)
+                    elif isinstance(node, ast.ClassDef):
+                        all_definitions.add(node.name)
+                    elif isinstance(node, ast.Name):
+                        all_usages.add(node.id)
+
+            except (SyntaxError, UnicodeDecodeError):
                 continue
-            
-            for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                    all_definitions[node.name] = (file_path, node)
-        
-        # Second pass: collect all usages
+
+        # Find unused definitions (simplified analysis)
         for file_path in self.python_files:
-            tree = self._parse_file(file_path)
-            if not tree:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                tree = ast.parse(content)
+
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef):
+                        if node.name not in all_usages and not node.name.startswith('_'):
+                            dead_code.append(DeadCodeReport(
+                                file_path=str(file_path),
+                                item_type='function',
+                                item_name=node.name,
+                                line_number=node.lineno,
+                                reason='Function appears to be unused'
+                            ))
+
+            except (SyntaxError, UnicodeDecodeError):
                 continue
-            
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Name):
-                    all_usages.add(node.id)
-                elif isinstance(node, ast.Attribute):
-                    all_usages.add(node.attr)
-        
-        # Find unused definitions
-        for name, (file_path, node) in all_definitions.items():
-            if name not in all_usages and not name.startswith('_'):
-                # Skip special methods and private functions
-                if not (name.startswith('__') and name.endswith('__')):
-                    dead_code.append(DeadCodeReport(
-                        file_path=str(file_path),
-                        item_type='function' if isinstance(node, ast.FunctionDef) else 'class',
-                        item_name=name,
-                        line_number=node.lineno,
-                        reason="No usages found in codebase",
-                        suggestions=[
-                            f"Remove unused {node.__class__.__name__.lower()} '{name}'",
-                            f"Add usage if function is needed",
-                            f"Make private with underscore prefix if internal"
-                        ]
-                    ))
-        
-        # Analyze unused imports
-        dead_code.extend(self._analyze_unused_imports())
-        
+
         return dead_code
-    
-    def _analyze_unused_imports(self) -> List[DeadCodeReport]:
-        """Analyze unused imports in each file"""
-        unused_imports = []
-        
-        for file_path in self.python_files:
-            tree = self._parse_file(file_path)
-            if not tree:
-                continue
-            
-            imports = []
-            usages = set()
-            
-            # Collect imports and usages
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        imports.append((alias.name, alias.asname or alias.name, node.lineno))
-                elif isinstance(node, ast.ImportFrom):
-                    for alias in node.names:
-                        imports.append((alias.name, alias.asname or alias.name, node.lineno))
-                elif isinstance(node, ast.Name):
-                    usages.add(node.id)
-                elif isinstance(node, ast.Attribute):
-                    usages.add(node.attr)
-            
-            # Find unused imports
-            for import_name, alias_name, line_no in imports:
-                if alias_name not in usages and import_name not in usages:
-                    # Skip common imports that might be used implicitly
-                    if import_name not in ['sys', 'os', 'logging']:
-                        unused_imports.append(DeadCodeReport(
-                            file_path=str(file_path),
-                            item_type='import',
-                            item_name=import_name,
-                            line_number=line_no,
-                            reason="Import not used in file",
-                            suggestions=[f"Remove unused import '{import_name}'"]
-                        ))
-        
-        return unused_imports
-    
+
     def check_code_quality(self) -> List[QualityReport]:
         """
-        Check code quality and naming conventions
-        
-        Returns:
-            List of QualityReport objects
+        Validate coding standards and conventions
         """
         quality_reports = []
-        
+
         for file_path in self.python_files:
             issues = []
-            
+
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
-                
-                tree = self._parse_file(file_path)
-                if not tree:
-                    continue
-                
-                # Check naming conventions
-                issues.extend(self._check_naming_conventions(tree, str(file_path)))
-                
-                # Check line length
-                issues.extend(self._check_line_length(lines, str(file_path)))
-                
-                # Check complexity
-                complexity = self._calculate_complexity(tree)
-                
-                # Check for code smells
-                issues.extend(self._check_code_smells(tree, str(file_path)))
-                
-                # Calculate maintainability index
-                maintainability = self._calculate_maintainability_index(tree, len(lines))
-                
+
+                # Check for common quality issues
+                for i, line in enumerate(lines, 1):
+                    # Check line length
+                    if len(line.rstrip()) > 120:
+                        issues.append(QualityIssue(
+                            file_path=str(file_path),
+                            line_number=i,
+                            issue_type='line_length',
+                            description=f'Line too long ({len(line.rstrip())} characters)',
+                            suggestion='Break line into multiple lines'
+                        ))
+
+                    # Check for TODO/FIXME comments
+                    if 'TODO' in line or 'FIXME' in line:
+                        issues.append(QualityIssue(
+                            file_path=str(file_path),
+                            line_number=i,
+                            issue_type='todo',
+                            description='TODO/FIXME comment found',
+                            suggestion='Address the TODO item or create a proper issue'
+                        ))
+
+                # Parse AST for more complex checks
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    tree = ast.parse(content)
+
+                    for node in ast.walk(tree):
+                        # Check function complexity (simplified)
+                        if isinstance(node, ast.FunctionDef):
+                            if len(node.body) > 20:
+                                issues.append(QualityIssue(
+                                    file_path=str(file_path),
+                                    line_number=node.lineno,
+                                    issue_type='complexity',
+                                    description=f'Function {node.name} is too complex ({len(node.body)} statements)',
+                                    suggestion='Consider breaking function into smaller functions'
+                                ))
+
+                except SyntaxError:
+                    pass
+
                 quality_reports.append(QualityReport(
                     file_path=str(file_path),
                     issues=issues,
-                    complexity_score=complexity,
-                    maintainability_index=maintainability,
-                    suggestions=self._generate_quality_suggestions(issues, complexity)
+                    complexity_score=len(issues) * 0.1,  # Simplified scoring
+                    maintainability_index=max(0, 100 - len(issues) * 5),
+                    suggestions=[]
                 ))
-                
-            except Exception as e:
-                print(f"Warning: Could not analyze {file_path}: {e}")
-        
+
+            except (UnicodeDecodeError, FileNotFoundError):
+                continue
+
         return quality_reports
-    
+
     def suggest_refactoring(self) -> List[RefactoringRecommendation]:
         """
-        Generate refactoring recommendations
-        
-        Returns:
-            List of RefactoringRecommendation objects
+        Recommend improvements for maintainability
         """
         recommendations = []
-        
-        # Analyze for common refactoring opportunities
+
+        # Analyze file sizes and suggest splitting large files
         for file_path in self.python_files:
-            tree = self._parse_file(file_path)
-            if not tree:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+
+                if len(lines) > 500:
+                    recommendations.append(RefactoringRecommendation(
+                        file_path=str(file_path),
+                        recommendation_type='file_size',
+                        description=f'File is very large ({len(lines)} lines)',
+                        priority='medium',
+                        estimated_effort='2-4 hours'
+                    ))
+
+                # Check for import organization
+                import_lines = [line for line in lines[:50] if line.strip().startswith(('import ', 'from '))]
+                if len(import_lines) > 15:
+                    recommendations.append(RefactoringRecommendation(
+                        file_path=str(file_path),
+                        recommendation_type='imports',
+                        description=f'Too many imports ({len(import_lines)})',
+                        priority='low',
+                        estimated_effort='30 minutes'
+                    ))
+
+            except (UnicodeDecodeError, FileNotFoundError):
                 continue
-            
-            # Long function detection
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    if hasattr(node, 'end_lineno'):
-                        length = node.end_lineno - node.lineno
-                        if length > 50:  # Functions longer than 50 lines
-                            recommendations.append(RefactoringRecommendation(
-                                file_path=str(file_path),
-                                recommendation_type="function_decomposition",
-                                description=f"Function '{node.name}' is {length} lines long and should be broken down",
-                                priority="medium",
-                                estimated_effort="medium",
-                                benefits=[
-                                    "Improved readability",
-                                    "Better testability",
-                                    "Easier maintenance"
-                                ]
-                            ))
-            
-            # Class with too many methods
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef):
-                    methods = [n for n in node.body if isinstance(n, ast.FunctionDef)]
-                    if len(methods) > 15:  # Classes with more than 15 methods
-                        recommendations.append(RefactoringRecommendation(
-                            file_path=str(file_path),
-                            recommendation_type="class_decomposition",
-                            description=f"Class '{node.name}' has {len(methods)} methods and may violate SRP",
-                            priority="high",
-                            estimated_effort="large",
-                            benefits=[
-                                "Better separation of concerns",
-                                "Improved maintainability",
-                                "Easier testing"
-                            ]
-                        ))
-        
+
         return recommendations
-    
-    def _get_function_signature(self, func_node: ast.FunctionDef) -> str:
-        """Generate a signature for function comparison"""
-        args = [arg.arg for arg in func_node.args.args]
-        return f"{func_node.name}({','.join(args)})"
-    
-    def _calculate_similarity(self, func1: ast.FunctionDef, func2: ast.FunctionDef) -> float:
-        """Calculate similarity between two functions"""
-        # Simple similarity based on AST structure
-        # In a real implementation, this would be more sophisticated
-        
-        def count_nodes(node):
-            return len(list(ast.walk(node)))
-        
-        nodes1 = count_nodes(func1)
-        nodes2 = count_nodes(func2)
-        
-        if nodes1 == 0 and nodes2 == 0:
-            return 1.0
-        
-        # Simple similarity metric
-        return 1.0 - abs(nodes1 - nodes2) / max(nodes1, nodes2)
-    
-    def _check_naming_conventions(self, tree: ast.AST, file_path: str) -> List[QualityIssue]:
-        """Check Python naming conventions"""
-        issues = []
-        
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                if not re.match(r'^[a-z_][a-z0-9_]*$', node.name):
-                    issues.append(QualityIssue(
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        issue_type="naming_convention",
-                        description=f"Function '{node.name}' should use snake_case",
-                        severity="warning",
-                        suggestion=f"Rename to follow snake_case convention"
-                    ))
-            
-            elif isinstance(node, ast.ClassDef):
-                if not re.match(r'^[A-Z][a-zA-Z0-9]*$', node.name):
-                    issues.append(QualityIssue(
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        issue_type="naming_convention",
-                        description=f"Class '{node.name}' should use PascalCase",
-                        severity="warning",
-                        suggestion=f"Rename to follow PascalCase convention"
-                    ))
-        
-        return issues
-    
-    def _check_line_length(self, lines: List[str], file_path: str) -> List[QualityIssue]:
-        """Check for lines that are too long"""
-        issues = []
-        max_length = 100  # PEP 8 recommends 79, but 100 is more practical
-        
-        for i, line in enumerate(lines, 1):
-            if len(line.rstrip()) > max_length:
-                issues.append(QualityIssue(
-                    file_path=file_path,
-                    line_number=i,
-                    issue_type="line_length",
-                    description=f"Line too long ({len(line.rstrip())} > {max_length} characters)",
-                    severity="info",
-                    suggestion="Break line into multiple lines"
-                ))
-        
-        return issues
-    
-    def _calculate_complexity(self, tree: ast.AST) -> float:
-        """Calculate cyclomatic complexity"""
-        complexity = 1  # Base complexity
-        
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.If, ast.While, ast.For, ast.Try, ast.With)):
-                complexity += 1
-            elif isinstance(node, ast.BoolOp):
-                complexity += len(node.values) - 1
-        
-        return complexity
-    
-    def _check_code_smells(self, tree: ast.AST, file_path: str) -> List[QualityIssue]:
-        """Check for common code smells"""
-        issues = []
-        
-        # Check for too many parameters
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                param_count = len(node.args.args)
-                if param_count > 5:
-                    issues.append(QualityIssue(
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        issue_type="too_many_parameters",
-                        description=f"Function '{node.name}' has {param_count} parameters (>5)",
-                        severity="warning",
-                        suggestion="Consider using a parameter object or breaking down the function"
-                    ))
-        
-        return issues
-    
-    def _calculate_maintainability_index(self, tree: ast.AST, line_count: int) -> float:
-        """Calculate maintainability index (simplified)"""
-        complexity = self._calculate_complexity(tree)
-        
-        # Simplified maintainability index calculation
-        # Real calculation would include Halstead metrics
-        if line_count == 0:
-            return 100.0
-        
-        mi = max(0, 171 - 5.2 * math.log(complexity) - 0.23 * complexity - 16.2 * math.log(line_count))
-        return min(100, mi)
-    
-    def _generate_quality_suggestions(self, issues: List[QualityIssue], complexity: float) -> List[str]:
-        """Generate quality improvement suggestions"""
-        suggestions = []
-        
-        error_count = sum(1 for issue in issues if issue.severity == "error")
-        warning_count = sum(1 for issue in issues if issue.severity == "warning")
-        
-        if error_count > 0:
-            suggestions.append(f"Fix {error_count} error(s) to improve code quality")
-        
-        if warning_count > 5:
-            suggestions.append(f"Address {warning_count} warning(s) for better maintainability")
-        
-        if complexity > 20:
-            suggestions.append("Consider breaking down complex functions to reduce complexity")
-        
-        return suggestions
-    
-    def generate_cleanup_report(self) -> Dict[str, Any]:
+
+    def fix_common_issues(self) -> Dict[str, int]:
+        """
+        Automatically fix common issues
+        """
+        fixes_applied = {
+            'trailing_whitespace': 0,
+            'missing_newlines': 0,
+            'import_sorting': 0,
+            'assertion_methods': 0
+        }
+
+        for file_path in self.python_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    lines = f.readlines()
+
+                modified = False
+                new_lines = []
+
+                # Reset file pointer and read lines again
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+
+                for line in lines:
+                    original_line = line
+
+                    # Fix trailing whitespace
+                    if line.rstrip() != line.rstrip('\n'):
+                        line = line.rstrip() + '\n'
+                        fixes_applied['trailing_whitespace'] += 1
+                        modified = True
+
+                    # Fix common test assertion typos
+                    if 'assertEqual' in line:
+                        line = line.replace('assertEqual', 'assertEqual')
+                        fixes_applied['assertion_methods'] += 1
+                        modified = True
+
+                    if 'assertTrue' in line:
+                        line = line.replace('assertTrue', 'assertTrue')
+                        fixes_applied['assertion_methods'] += 1
+                        modified = True
+
+                    if 'assertFalse' in line:
+                        line = line.replace('assertFalse', 'assertFalse')
+                        fixes_applied['assertion_methods'] += 1
+                        modified = True
+
+                    new_lines.append(line)
+
+                # Ensure file ends with newline
+                if new_lines and not new_lines[-1].endswith('\n'):
+                    new_lines[-1] += '\n'
+                    fixes_applied['missing_newlines'] += 1
+                    modified = True
+
+                # Write back if modified
+                if modified:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.writelines(new_lines)
+
+            except (UnicodeDecodeError, FileNotFoundError):
+                continue
+
+        return fixes_applied
+
+    def generate_cleanup_report(self) -> str:
         """
         Generate comprehensive cleanup report
-        
-        Returns:
-            Dictionary with all analysis results
         """
-        print("🔍 Analyzing codebase for cleanup opportunities...")
-        
-        report = {
-            "timestamp": datetime.now().isoformat(),
-            "files_analyzed": len(self.python_files),
-            "duplicates": [],
-            "dead_code": [],
-            "quality_issues": [],
-            "refactoring_recommendations": [],
-            "summary": {}
-        }
-        
-        try:
-            # Run all analyses
-            print("  📋 Detecting duplicate code...")
-            report["duplicates"] = [
-                {
-                    "file1": dup.file1,
-                    "file2": dup.file2,
-                    "function": dup.function_name,
-                    "similarity": dup.similarity_score,
-                    "lines": dup.line_count
-                }
-                for dup in self.detect_duplicate_code()
-            ]
-            
-            print("  🗑️  Analyzing dead code...")
-            report["dead_code"] = [
-                {
-                    "file": dead.file_path,
-                    "type": dead.item_type,
-                    "name": dead.item_name,
-                    "line": dead.line_number,
-                    "reason": dead.reason,
-                    "suggestions": dead.suggestions
-                }
-                for dead in self.analyze_dead_code()
-            ]
-            
-            print("  ✨ Checking code quality...")
-            quality_reports = self.check_code_quality()
-            report["quality_issues"] = [
-                {
-                    "file": qr.file_path,
-                    "complexity": qr.complexity_score,
-                    "maintainability": qr.maintainability_index,
-                    "issues_count": len(qr.issues),
-                    "issues": [
-                        {
-                            "line": issue.line_number,
-                            "type": issue.issue_type,
-                            "description": issue.description,
-                            "severity": issue.severity
-                        }
-                        for issue in qr.issues
-                    ]
-                }
-                for qr in quality_reports
-            ]
-            
-            print("  🔧 Generating refactoring recommendations...")
-            report["refactoring_recommendations"] = [
-                {
-                    "file": rec.file_path,
-                    "type": rec.recommendation_type,
-                    "description": rec.description,
-                    "priority": rec.priority,
-                    "effort": rec.estimated_effort,
-                    "benefits": rec.benefits
-                }
-                for rec in self.suggest_refactoring()
-            ]
-            
-            # Generate summary
-            total_issues = sum(len(qr["issues"]) for qr in report["quality_issues"])
-            report["summary"] = {
-                "duplicate_functions": len(report["duplicates"]),
-                "dead_code_items": len(report["dead_code"]),
-                "quality_issues": total_issues,
-                "refactoring_opportunities": len(report["refactoring_recommendations"]),
-                "files_with_issues": len([qr for qr in report["quality_issues"] if qr["issues_count"] > 0])
-            }
-            
-        except Exception as e:
-            report["error"] = str(e)
-        
-        return report
+        duplicates = self.detect_duplicate_code()
+        dead_code = self.analyze_dead_code()
+        quality_reports = self.check_code_quality()
+        recommendations = self.suggest_refactoring()
 
+        report = []
+        report.append("# Codebase Cleanup Report")
+        report.append(f"Generated for project: {self.project_root}")
+        report.append(f"Python files analyzed: {len(self.python_files)}")
+        report.append("")
 
-# TODO: This function 'main' is duplicated in db_manager.py
+        # Duplicate code section
+        report.append("## Duplicate Code Analysis")
+        if duplicates:
+            report.append(f"Found {len(duplicates)} potential duplicates:")
+            for dup in duplicates[:10]:  # Show top 10
+                report.append(f"- {dup.function_name} in {dup.file1} and {dup.file2}")
+        else:
+            report.append("✅ No duplicate functions detected")
+        report.append("")
 
-# TODO: This function 'main' is duplicated in db_manager.py
+        # Dead code section
+        report.append("## Dead Code Analysis")
+        if dead_code:
+            report.append(f"Found {len(dead_code)} potentially unused items:")
+            for item in dead_code[:10]:  # Show top 10
+                report.append(f"- {item.item_type} '{item.item_name}' in {item.file_path}:{item.line_number}")
+        else:
+            report.append("✅ No obvious dead code detected")
+        report.append("")
 
-# TODO: This function 'main' is duplicated in db_manager.py
+        # Quality issues section
+        report.append("## Code Quality Issues")
+        total_issues = sum(len(qr.issues) for qr in quality_reports)
+        if total_issues > 0:
+            report.append(f"Found {total_issues} quality issues across {len(quality_reports)} files")
+
+            # Group by issue type
+            issue_types = {}
+            for qr in quality_reports:
+                for issue in qr.issues:
+                    issue_types[issue.issue_type] = issue_types.get(issue.issue_type, 0) + 1
+
+            for issue_type, count in sorted(issue_types.items()):
+                report.append(f"- {issue_type}: {count} occurrences")
+        else:
+            report.append("✅ No quality issues detected")
+        report.append("")
+
+        # Refactoring recommendations
+        report.append("## Refactoring Recommendations")
+        if recommendations:
+            high_priority = [r for r in recommendations if r.priority == 'high']
+            medium_priority = [r for r in recommendations if r.priority == 'medium']
+
+            if high_priority:
+                report.append("### High Priority:")
+                for rec in high_priority:
+                    report.append(f"- {rec.description} ({rec.file_path})")
+
+            if medium_priority:
+                report.append("### Medium Priority:")
+                for rec in medium_priority[:5]:  # Show top 5
+                    report.append(f"- {rec.description} ({rec.file_path})")
+        else:
+            report.append("✅ No major refactoring needed")
+
+        return "\n".join(report)
+
 
 def main():
-    """Run codebase cleanup analysis"""
-    print("=== Digital Freight Matching Codebase Cleanup ===")
-    
+    """Main function for running cleanup analysis"""
     cleanup = CodebaseCleanup()
+
+    print("🧹 Running codebase cleanup analysis...")
+
+    # Apply automatic fixes
+    print("\n📝 Applying automatic fixes...")
+    fixes = cleanup.fix_common_issues()
+    for fix_type, count in fixes.items():
+        if count > 0:
+            print(f"  ✅ {fix_type}: {count} fixes applied")
+
+    # Generate report
+    print("\n📊 Generating cleanup report...")
     report = cleanup.generate_cleanup_report()
-    
-    if "error" in report:
-        print(f"❌ Analysis failed: {report['error']}")
-        return
-    
-    # Display summary
-    summary = report["summary"]
-    print(f"\n📊 Analysis Summary:")
-    print(f"  Files analyzed: {report['files_analyzed']}")
-    print(f"  Duplicate functions: {summary['duplicate_functions']}")
-    print(f"  Dead code items: {summary['dead_code_items']}")
-    print(f"  Quality issues: {summary['quality_issues']}")
-    print(f"  Refactoring opportunities: {summary['refactoring_opportunities']}")
-    
-    # Show top issues
-    if report["duplicates"]:
-        print(f"\n🔄 Top Duplicate Code:")
-        for dup in report["duplicates"][:3]:
-            print(f"  - {dup['function']} in {Path(dup['file1']).name} & {Path(dup['file2']).name}")
-    
-    if report["dead_code"]:
-        print(f"\n🗑️  Dead Code Found:")
-        for dead in report["dead_code"][:5]:
-            print(f"  - {dead['type']} '{dead['name']}' in {Path(dead['file']).name}:{dead['line']}")
-    
-    if report["refactoring_recommendations"]:
-        print(f"\n🔧 Top Refactoring Opportunities:")
-        high_priority = [r for r in report["refactoring_recommendations"] if r["priority"] == "high"]
-        for rec in high_priority[:3]:
-            print(f"  - {rec['description']} ({rec['effort']} effort)")
-    
-    print(f"\n✅ Cleanup analysis complete!")
-    return report
+
+    # Save report
+    report_path = Path("cleanup_report.md")
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(report)
+
+    print(f"\n✅ Cleanup complete! Report saved to {report_path}")
+    print("\nSummary:")
+    print(report.split('\n\n')[1])  # Show summary section
 
 
 if __name__ == "__main__":

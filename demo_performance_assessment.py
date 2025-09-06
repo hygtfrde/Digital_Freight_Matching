@@ -26,17 +26,17 @@ def demo_basic_performance_profiling():
     print("\n" + "="*50)
     print("DEMO: Basic Performance Profiling")
     print("="*50)
-    
+
     assessor = PerformanceAssessor()
-    
+
     # Create test data
     locations = [
         Location(lat=33.7490, lng=-84.3880),  # Atlanta
         Location(lat=32.0835, lng=-81.0998),  # Savannah
     ]
-    
+
     trucks = [Truck(capacity=48.0, autonomy=600.0, type="standard")]
-    
+
     routes = [Route(
         location_origin_id=0,
         location_destiny_id=1,
@@ -44,7 +44,7 @@ def demo_basic_performance_profiling():
         location_destiny=locations[1],
         truck_id=0
     )]
-    
+
     # Create test order
     packages = [Package(volume=10.0, weight=20.0, type=CargoType.STANDARD)]
     cargo = Cargo(order_id=1, packages=packages)
@@ -56,16 +56,16 @@ def demo_basic_performance_profiling():
         location_destiny=locations[1],
         cargo=[cargo]
     )
-    
+
     print("Profiling single order processing...")
     metrics = assessor.profile_order_processing([order], routes, trucks)
-    
+
     print(f"Execution Time: {metrics.execution_time_ms:.1f}ms")
     print(f"Memory Usage: {metrics.memory_usage_mb:.1f}MB")
     print(f"CPU Usage: {metrics.cpu_usage_percent:.1f}%")
     print(f"Success: {metrics.success}")
     print(f"Meets 5-second requirement: {metrics.execution_time_ms <= 5000}")
-    
+
     if metrics.additional_data:
         print(f"Success Rate: {metrics.additional_data.get('success_rate_percent', 0):.1f}%")
 
@@ -75,17 +75,17 @@ def demo_load_testing():
     print("\n" + "="*50)
     print("DEMO: Load Testing")
     print("="*50)
-    
+
     assessor = PerformanceAssessor()
-    
+
     # Create test data
     locations = [
         Location(lat=33.7490, lng=-84.3880),  # Atlanta
         Location(lat=32.0835, lng=-81.0998),  # Savannah
     ]
-    
+
     trucks = [Truck(capacity=48.0, autonomy=600.0, type="standard")]
-    
+
     routes = [Route(
         location_origin_id=0,
         location_destiny_id=1,
@@ -93,7 +93,7 @@ def demo_load_testing():
         location_destiny=locations[1],
         truck_id=0
     )]
-    
+
     def order_generator():
         packages = [Package(volume=10.0, weight=20.0, type=CargoType.STANDARD)]
         cargo = Cargo(order_id=1, packages=packages)
@@ -105,7 +105,7 @@ def demo_load_testing():
             location_destiny=locations[1],
             cargo=[cargo]
         )
-    
+
     print("Running load test with 3 concurrent users, 10 operations each...")
     load_results = assessor.run_load_tests(
         order_generator=order_generator,
@@ -114,7 +114,7 @@ def demo_load_testing():
         concurrent_users=3,
         operations_per_user=10
     )
-    
+
     print(f"Total Operations: {load_results.total_operations}")
     print(f"Successful: {load_results.successful_operations}")
     print(f"Failed: {load_results.failed_operations}")
@@ -129,23 +129,23 @@ def demo_memory_monitoring():
     print("\n" + "="*50)
     print("DEMO: Memory Monitoring")
     print("="*50)
-    
+
     assessor = PerformanceAssessor()
-    
+
     print("Monitoring memory usage for 30 seconds...")
     print("(This will sample memory every 2 seconds)")
-    
+
     memory_report = assessor.monitor_memory_usage(
         duration_seconds=30,
         sample_interval_seconds=2.0
     )
-    
+
     print(f"Peak Memory: {memory_report.peak_memory_mb:.1f}MB")
     print(f"Current Memory: {memory_report.current_memory_mb:.1f}MB")
     print(f"Memory Growth: {memory_report.memory_growth_mb:.1f}MB")
     print(f"Samples Collected: {memory_report.samples_count}")
     print(f"Potential Leaks Detected: {len(memory_report.potential_leaks)}")
-    
+
     if memory_report.potential_leaks:
         print("Potential Memory Issues:")
         for leak in memory_report.potential_leaks[:3]:  # Show first 3
@@ -157,9 +157,9 @@ def demo_comprehensive_assessment():
     print("\n" + "="*50)
     print("DEMO: Comprehensive Performance Assessment")
     print("="*50)
-    
+
     runner = PerformanceTestRunner()
-    
+
     print("Running comprehensive performance test suite...")
     print("This includes:")
     print("  - Single order profiling")
@@ -168,12 +168,12 @@ def demo_comprehensive_assessment():
     print("  - Memory monitoring")
     print("  - Benchmark comparisons")
     print("  - Compliance checking")
-    
+
     results = runner.run_comprehensive_performance_tests()
-    
+
     # Print summary
     runner.print_summary_report(results)
-    
+
     return results
 
 
@@ -187,20 +187,20 @@ def main():
     print("Performance Assessment and Monitoring Demo")
     print("=" * 60)
     print(f"Demo started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     try:
         # Demo 1: Basic Performance Profiling
         demo_basic_performance_profiling()
-        
+
         # Demo 2: Load Testing
         demo_load_testing()
-        
+
         # Demo 3: Memory Monitoring
         demo_memory_monitoring()
-        
+
         # Demo 4: Comprehensive Assessment
         results = demo_comprehensive_assessment()
-        
+
         print("\n" + "="*60)
         print("DEMO COMPLETE")
         print("="*60)
@@ -212,7 +212,7 @@ def main():
         print("✓ Benchmark testing and regression detection")
         print("✓ Comprehensive compliance checking")
         print("✓ Automated report generation")
-        
+
         # Show compliance status
         if results and 'compliance_check' in results:
             compliance = results['compliance_check']
@@ -222,15 +222,15 @@ def main():
             print(f"  Acceptable error rate: {'✓' if compliance.get('acceptable_error_rate') else '✗'}")
             print(f"  Memory stable: {'✓' if compliance.get('memory_stable') else '✗'}")
             print(f"  Overall compliant: {'✓' if compliance.get('overall_compliant') else '✗'}")
-        
+
         print(f"\n_Demo completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
+
     except Exception as e:
         print(f"\n_Demo failed with error: {str(e)}")
         import traceback
         traceback.print_exc()
         return 1
-    
+
     return 0
 
 

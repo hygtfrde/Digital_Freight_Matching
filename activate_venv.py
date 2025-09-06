@@ -11,18 +11,18 @@ from pathlib import Path
 def main():
     """Show virtual environment activation instructions"""
     venv_path = Path("venv")
-    
+
     if not venv_path.exists():
         print("ERROR: Virtual environment not found!")
         print("Please run 'python setup_dfm.py' first to create the virtual environment.")
         sys.exit(1)
-    
+
     print("Digital Freight Matcher - Virtual Environment")
     print("="*50)
-    
+
     activate_script = "source venv/bin/activate"
     python_path = "venv/bin/python"
-    
+
     print("To activate the virtual environment:")
     print(f"  {activate_script}")
     print()
