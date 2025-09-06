@@ -11,6 +11,7 @@ import yaml
 import requests
 import logging
 from datetime import datetime
+from typing import Dict, List, Union, Optional
 from sqlmodel import Session
 
 # Configure logging
