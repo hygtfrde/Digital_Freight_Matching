@@ -33,7 +33,6 @@ def create_cargo_type_test_data():
         profitability=-50.12,
         orders=[]
     )
-    route.set_path([atlanta, augusta])
     
     truck = Truck(
         id=1,
@@ -45,7 +44,7 @@ def create_cargo_type_test_data():
     
     # Nearby locations (within 1km for proximity compliance)
     atlanta_near = Location(id=3, lat=33.7500, lng=-84.3890)
-    augusta_near = Location(id=4, lat=33.4745, -82.0115)
+    augusta_near = Location(id=4, lat=33.4745, lng=-82.0115)
     
     return route, truck, atlanta_near, augusta_near
 
@@ -261,7 +260,7 @@ def demonstrate_existing_cargo_conflicts():
     route, truck, pickup_loc, dropoff_loc = create_cargo_type_test_data()
     
     # Add existing hazmat cargo to truck
-    existing_cargo = Cargo(id=100, packages=[
+    existing_cargo = Cargo(id=100, order_id=100, packages=[
         Package(id=100, volume=5.0, weight=100.0, type=CargoType.HAZMAT, cargo_id=100)
     ])
     truck.cargo_loads = [existing_cargo]

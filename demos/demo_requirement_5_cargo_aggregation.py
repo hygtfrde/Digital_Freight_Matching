@@ -12,7 +12,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlmodel import Session
+from sqlmodel import Session, text
 from app.database import engine, Client, Location, Order, Truck, Route, Cargo, Package, CargoType
 from services.cargo_aggregation_service import CargoAggregationService
 from services.route_generation_service import RouteGenerationService
@@ -22,13 +22,13 @@ def create_cargo_aggregation_demo_data(session: Session):
     """Create demo data showing cargo that needs aggregation"""
     
     # Clean previous demo data
-    session.execute("DELETE FROM package;")
-    session.execute("DELETE FROM cargo;")  
-    session.execute("DELETE FROM `order`;")
-    session.execute("DELETE FROM route;")
-    session.execute("DELETE FROM truck;")
-    session.execute("DELETE FROM client;")
-    session.execute("DELETE FROM location;")
+    session.execute(text("DELETE FROM package;"))
+    session.execute(text("DELETE FROM cargo;"))  
+    session.execute(text("DELETE FROM `order`;"))
+    session.execute(text("DELETE FROM route;"))
+    session.execute(text("DELETE FROM truck;"))
+    session.execute(text("DELETE FROM client;"))
+    session.execute(text("DELETE FROM location;"))
     session.commit()
     
     # Create multiple clients

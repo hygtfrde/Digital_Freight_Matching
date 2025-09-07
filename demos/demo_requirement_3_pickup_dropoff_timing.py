@@ -32,7 +32,6 @@ def create_timing_test_data():
         profitability=-131.40,  # Business requirement: original loss
         orders=[]
     )
-    route.set_path([atlanta, savannah])
     
     truck = Truck(
         id=1,

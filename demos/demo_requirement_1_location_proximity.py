@@ -32,7 +32,6 @@ def create_proximity_test_data():
         profitability=-50.12,  # Original business requirement: losing money
         orders=[]
     )
-    route.set_path([atlanta, augusta])
     
     truck = Truck(
         id=1,

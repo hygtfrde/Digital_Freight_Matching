@@ -114,7 +114,6 @@ def demonstrate_profitability_integration():
         profitability=-50.12,  # Business requirement: original loss
         orders=[]
     )
-    route.set_path([atlanta, augusta])
     
     truck = Truck(
         id=1,

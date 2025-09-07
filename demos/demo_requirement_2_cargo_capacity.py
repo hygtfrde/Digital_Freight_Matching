@@ -32,7 +32,6 @@ def create_capacity_test_data():
         profitability=-131.40,  # Business requirement: Savannah route loss
         orders=[]
     )
-    route.set_path([atlanta, savannah])
     
     # Truck with business requirement specifications
     truck = Truck(
