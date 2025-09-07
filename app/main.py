@@ -59,16 +59,21 @@ def startup_event():
     create_tables()
     # Safe initialization - only seeds data if not already present
     try:
+        # Try to initialize with db_manager if available
         import sys
         import os
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-        from safe_db_init import SafeDataIngestion
+        from db_manager import DatabaseManager
 
         with Session(engine) as session:
-            ingestion = SafeDataIngestion(session)
-            ingestion.initialize_safely()
+            db_manager = DatabaseManager(session)
+            success = db_manager.initialize_database()
+            if success:
+                print("Database initialized successfully")
+            else:
+                print("Database already initialized")
     except Exception as e:
-        print(f"Warning: Could not run safe initialization: {e}")
+        print(f"Warning: Could not run database initialization: {e}")
         # Continue anyway - tables are created
 
 # Root endpoint with welcome message

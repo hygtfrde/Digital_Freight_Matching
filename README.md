@@ -37,6 +37,9 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Verify installation
+pip list | grep -E "(fastapi|sqlmodel|pyyaml|pytest)"
 ```
 
 ### 2. Initialize Database
@@ -204,8 +207,9 @@ Location ← Order → Route → Truck
 source venv/bin/activate  # On macOS/Linux
 # venv\Scripts\activate   # On Windows
 
-# Install test dependencies (if not already installed)
-pip install pytest pytest-cov
+# All testing dependencies should be installed with requirements.txt
+# But if you need to install them separately:
+pip install pytest pytest-cov pytest-watch pytest-xdist
 ```
 
 #### Running All Tests (Recommended)
@@ -347,6 +351,48 @@ After initialization, you should see:
 - Routes: 5 (Atlanta to destinations)
 - Orders: 10+ (Contract + example orders)
 - Daily Loss: -$388.15
+
+### Setup Troubleshooting
+
+**Missing dependencies (yaml, colorama, etc.)**
+```bash
+# Make sure you're in the virtual environment
+source venv/bin/activate  # On macOS/Linux
+
+# Install missing dependencies
+pip install pyyaml colorama rich
+
+# Or reinstall all requirements
+pip install -r requirements.txt --force-reinstall
+```
+
+**CLI Menu App won't start**
+```bash
+# Check if all dependencies are installed
+python -c "import yaml, colorama, rich; print('All CLI dependencies OK')"
+
+# If that fails, install missing packages:
+pip install pyyaml colorama rich
+```
+
+**API Server warnings about deprecated methods**
+```bash
+# The FastAPI server will show deprecation warnings but still work
+# These are non-critical and don't affect functionality
+python app/main.py  # Should still start successfully on port 8000
+```
+
+**Module import errors**
+```bash
+# Make sure you're running from the project root directory
+pwd  # Should show .../Digital_Freight_Matching
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Try running again
+python cli_menu_app/main.py
+```
 
 ## Contributing
 
