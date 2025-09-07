@@ -3,6 +3,9 @@ venv/
 env/
 ENV/
 
+# Cache files
+.cache/
+
 # Database files
 *.db
 *.sqlite

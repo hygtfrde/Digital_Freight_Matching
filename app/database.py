@@ -212,7 +212,8 @@ class Route(SQLModel, table=True):
     
     def set_path(self, waypoints: List["Location"]):
         """Set the path waypoints for this route (not stored in DB)"""
-        self.path = waypoints
+        # Use object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, 'path', waypoints)
     
     def is_within_km(self, location_coords, km: float = 1.0) -> bool:
         """
