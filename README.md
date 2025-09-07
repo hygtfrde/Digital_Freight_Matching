@@ -197,19 +197,81 @@ Location ← Order → Route → Truck
 ```
 
 ### Running Tests
+
+#### Prerequisites
 ```bash
 # Activate virtual environment first
 source venv/bin/activate  # On macOS/Linux
 # venv\Scripts\activate   # On Windows
 
-# Test database manager (comprehensive test suite)
-python test_db_manager.py
+# Install test dependencies (if not already installed)
+pip install pytest pytest-cov
+```
 
-# Test business logic  
-python dfm.py
+#### Running All Tests (Recommended)
+```bash
+# Run all tests with verbose output
+python -m pytest tests/ -v
 
-# Interactive CLI Menu App
-python cli_menu_app/main.py
+# Run tests with coverage report
+python -m pytest tests/ --cov=validation --cov=schemas --cov=app --cov-report=html
+
+# Run tests and generate coverage report in terminal
+python -m pytest tests/ --cov=validation --cov=schemas --cov=app --cov-report=term-missing
+```
+
+#### Running Specific Test Files
+```bash
+# Business validation tests
+python -m pytest tests/test_business_validator.py -v
+
+# Database manager tests
+python -m pytest tests/test_db_manager.py -v
+
+# Route calculation tests
+python -m pytest tests/test_route_calculation_service.py -v
+
+# Order processing tests
+python -m pytest tests/test_order_processor.py -v
+
+# All validation-related tests
+python -m pytest tests/test_*validator*.py -v
+```
+
+#### Running Tests Directly (Alternative)
+```bash
+# Individual test files can also be run directly
+python tests/test_business_validator.py
+python tests/test_db_manager.py
+
+# Or use the test runner script
+python run_tests.py                           # All tests
+python run_tests.py test_business_validator   # Specific test
+```
+
+#### Test Categories
+- **Unit Tests**: `tests/test_*.py` - Individual component testing
+- **Integration Tests**: `tests/integration/` - Cross-component testing  
+- **Performance Tests**: `tests/performance/` - Load and performance testing
+
+#### Test Coverage
+The test suite covers:
+- ✅ Business requirement validation (5 core requirements)
+- ✅ Database operations and integrity
+- ✅ Route calculation algorithms
+- ✅ Order processing and matching
+- ✅ Cargo aggregation services
+- ✅ Network caching and optimization
+
+#### Continuous Testing
+```bash
+# Watch for file changes and auto-run tests (requires pytest-watch)
+pip install pytest-watch
+ptw tests/
+
+# Run tests in parallel (requires pytest-xdist)
+pip install pytest-xdist
+python -m pytest tests/ -n auto
 ```
 
 ### Database Operations
