@@ -834,7 +834,7 @@ class RouteCalculationService:
                 logger.debug(f"Downloading network for bbox: {bbox}")
                 # Download network graph from OSMnx
                 graph = ox.graph_from_bbox(
-                    bbox.north, bbox.south, bbox.east, bbox.west,
+                    (bbox.north, bbox.south, bbox.east, bbox.west),
                     network_type=self.config.get('network_type', 'drive'),
                     simplify=True
                 )

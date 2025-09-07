@@ -276,7 +276,20 @@ class OrderProcessor:
         if not order.cargo:
             return None
 
-        # Check compatibility with existing cargo
+        # First, check internal compatibility within the order's cargo
+        for cargo in order.cargo:
+            if not self._is_internally_compatible(cargo):
+                cargo_types = [pkg.type.value for pkg in cargo.packages]
+                return ValidationError(
+                    result=ValidationResult.INCOMPATIBLE_CARGO,
+                    message=f"Incompatible cargo types within single shipment: {cargo_types}",
+                    details={
+                        "cargo_types": cargo_types,
+                        "internal_conflict": True
+                    }
+                )
+
+        # Then check compatibility with existing cargo on truck
         for new_cargo in order.cargo:
             for existing_cargo in truck.cargo_loads:
                 if not new_cargo.is_compatible_with(existing_cargo):
@@ -294,6 +307,24 @@ class OrderProcessor:
                     )
 
         return None
+    
+    def _is_internally_compatible(self, cargo) -> bool:
+        """Check if packages within a single cargo are compatible with each other"""
+        from schemas.schemas import CargoType
+        
+        cargo_types = cargo.get_types()
+        
+        # Check for incompatible combinations within this cargo
+        incompatible_pairs = [
+            (CargoType.HAZMAT, CargoType.FRAGILE),
+            (CargoType.HAZMAT, CargoType.REFRIGERATED)
+        ]
+        
+        for type1, type2 in incompatible_pairs:
+            if type1 in cargo_types and type2 in cargo_types:
+                return False
+        
+        return True
 
     def _min_distance_to_route(self, location: Location, route_points: List[Location]) -> float:
         """
