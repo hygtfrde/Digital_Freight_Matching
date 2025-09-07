@@ -5,6 +5,7 @@ ENV/
 
 # Cache files
 .cache/
+cache/
 
 # Database files
 *.db
