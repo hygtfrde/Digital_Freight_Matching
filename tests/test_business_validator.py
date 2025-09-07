@@ -12,6 +12,11 @@ Tests all validation methods against the 7 main business requirements:
 import unittest
 from unittest.mock import Mock
 from datetime import datetime
+import sys
+import os
+
+# Add the parent directory to the Python path so we can import validation module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from validation.business_validator import (
     BusinessValidator,
