@@ -370,10 +370,6 @@ class RequirementFunctions:
                 print_error("Need at least 4 locations available in database.")
                 return None
             
-            print(f"Available Locations:")
-            self._format_table_data_limited(locations_data, ['id', 'lat', 'lng', 'marked'])
-            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
-            
             locations = []
             location_prompts = [
                 "Test Order 1 - Pickup Location ID",
@@ -383,6 +379,13 @@ class RequirementFunctions:
             ]
             
             for prompt in location_prompts:
+                # Show available locations for each selection
+                print(f"\n📍 {prompt}")
+                print("-" * 50)
+                print(f"Available Locations:")
+                self._format_table_data_limited(locations_data, ['id', 'lat', 'lng', 'marked'])
+                print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
+                
                 while True:
                     loc_id_input = get_input(f"{prompt} (or 'back'/'cancel')")
                     if loc_id_input.lower() in ['cancel', 'back']:
