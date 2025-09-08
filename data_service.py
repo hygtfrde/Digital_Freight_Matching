@@ -10,6 +10,7 @@ import argparse
 import yaml
 import requests
 import logging
+from typing import Dict, List, Union, Optional
 from sqlmodel import Session
 
 # Add app directory to path
