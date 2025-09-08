@@ -19,7 +19,7 @@ from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, Cargo
 
 from ui_components import (
     print_header, print_menu_box, get_input, pause, print_success,
-    print_error, print_info, format_table_data, Colors
+    print_error, print_warning, print_info, format_table_data, Colors
 )
 from crud_operations import CRUDOperations
 
@@ -688,23 +688,42 @@ class RequirementFunctions:
         print("• Total time impact on route profitability")
 
         try:
-            routes = self._get_sample_routes(1)
-            if not routes:
-                print_error("No routes available for timing demo.")
-                return
-
-            route = routes[0]
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own route (interactive)")
+            
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
+            
+            if mode_choice == '2':
+                # User selection mode
+                route = self._timing_user_selection()
+                if not route:
+                    print_info("Timing test cancelled.")
+                    return
+                data_source = "Database"
+            else:
+                # Fallback mode
+                routes = self._get_sample_routes(1)
+                if not routes:
+                    print_error("No routes available for timing demo.")
+                    return
+                route = routes[0]
+                data_source = "Fallback Data"
             
             # Display route data information
-            route_source = self._data_sources.get('routes', 'Fallback Data')
-            self._display_route_info(route, route_source)
+            self._display_route_info(route, data_source)
             
             base_time = route.base_distance() / 60  # Assume 60 mph average
 
             print(f"\n📊 TIMING CALCULATIONS:")
             print(f"   Base route distance: {route.base_distance():.1f} km")
             print(f"   Base travel time: {base_time:.1f} hours")
-            print(f"   Stop time per pickup/dropoff: {self.processor.constants.STOP_DURATION_MINUTES} minutes")
+            print(f"   Stop time per pickup/dropoff: {self.processor.constants.STOP_TIME_MINUTES} minutes")
             
             # Simulate timing scenarios
             scenarios = [
@@ -715,16 +734,148 @@ class RequirementFunctions:
             ]
 
             for scenario_name, stops in scenarios:
-                stop_time_hours = (stops * self.processor.constants.STOP_DURATION_MINUTES) / 60
+                stop_time_hours = (stops * self.processor.constants.STOP_TIME_MINUTES) / 60
                 total_time = base_time + stop_time_hours
                 
                 print(f"   {scenario_name}:")
                 print(f"     Stops: {stops}, Stop time: {stop_time_hours:.1f}h, Total: {total_time:.1f}h")
 
-            print_success("✅ REQUIREMENT 3 TIMING CALCULATIONS IMPLEMENTED")
+            print_success("✅ REQUIREMENT 3: TIMING CALCULATIONS DEMONSTRATED")
 
         except Exception as e:
             print_error(f"Error in timing demo: {e}")
+
+    def _timing_user_selection(self):
+        """Allow user to select route for timing testing"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 TIMING TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 50)
+            
+            # Step 1: Select Route
+            print(f"\n🛣️ STEP 1: SELECT ROUTE")
+            print("-" * 25)
+            
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes available in database.")
+                return None
+            
+            print(f"Available Routes:")
+            self._format_table_data_limited(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
+            
+            while True:
+                route_id_input = get_input("Select Route ID (or 'back'/'cancel')")
+                if route_id_input.lower() in ['cancel', 'back']:
+                    return None
+                try:
+                    route_id = int(route_id_input)
+                    route_dict = next((r for r in routes_data if r.get('id') == route_id), None)
+                    if route_dict:
+                        route = self._dict_to_route(route_dict)
+                        if route:
+                            break
+                        else:
+                            print_error("Failed to process route data.")
+                            route = self._create_simple_route_from_dict(route_dict)
+                            if route:
+                                break
+                    else:
+                        print_error(f"Route ID {route_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Route ID number.")
+            
+            print_success(f"✅ Selected Route ID: {route.id}")
+            print(f"✅ Route distance: {route.base_distance():.1f} km")
+            
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Route: {route.id}")
+            
+            return route
+            
+        except Exception as e:
+            print_error(f"Error in timing user selection: {e}")
+            return None
+
+    def _cost_integration_user_selection(self):
+        """Allow user to select multiple routes for cost analysis"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 COST INTEGRATION TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 50)
+            
+            # Step 1: Select Multiple Routes
+            print(f"\n💰 STEP 1: SELECT ROUTES FOR COST ANALYSIS")
+            print("-" * 45)
+            
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes available in database.")
+                return None
+            
+            print(f"Available Routes:")
+            self._format_table_data_limited(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            print(f"\n💡 Select multiple routes by entering IDs separated by commas (e.g., 1,2,3)")
+            print(f"💡 Type 'back' or 'cancel' to return to previous menu")
+            
+            routes = []
+            while True:
+                route_ids_input = get_input("Enter Route IDs (comma-separated) (or 'back'/'cancel')")
+                if route_ids_input.lower() in ['cancel', 'back']:
+                    return None
+                    
+                try:
+                    # Parse comma-separated IDs
+                    route_ids = [int(x.strip()) for x in route_ids_input.split(',') if x.strip()]
+                    if not route_ids:
+                        print_error("Please enter at least one route ID.")
+                        continue
+                        
+                    if len(route_ids) < 2:
+                        print_warning("Cost analysis works better with multiple routes. Consider selecting 2-5 routes.")
+                        confirm = get_input("Continue with single route? (y/N): ")
+                        if confirm.lower() != 'y':
+                            continue
+                        
+                    # Validate all IDs exist and convert
+                    found_routes = []
+                    missing_ids = []
+                    
+                    for route_id in route_ids:
+                        route_dict = next((r for r in routes_data if r.get('id') == route_id), None)
+                        if route_dict:
+                            route = self._dict_to_route(route_dict)
+                            if not route:
+                                route = self._create_simple_route_from_dict(route_dict)
+                            if route:
+                                found_routes.append(route)
+                            else:
+                                missing_ids.append(route_id)
+                        else:
+                            missing_ids.append(route_id)
+                    
+                    if missing_ids:
+                        print_error(f"Route IDs not found: {missing_ids}")
+                        continue
+                        
+                    if found_routes:
+                        routes = found_routes
+                        break
+                        
+                except ValueError:
+                    print_error("Please enter valid numeric route IDs separated by commas.")
+            
+            print_success(f"✅ Selected {len(routes)} routes for cost analysis")
+            for route in routes:
+                print(f"   • Route {route.id}: {route.base_distance():.1f} km, ${route.profitability:.2f}")
+                
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Routes: {[route.id for route in routes]}")
+            
+            return routes
+            
+        except Exception as e:
+            print_error(f"Error in cost integration user selection: {e}")
+            return None
 
     def _demo_cost_integration(self):
         """Requirement 4: Cost Integration"""
@@ -735,42 +886,122 @@ class RequirementFunctions:
         print("=" * 60)
 
         try:
-            routes = self._get_sample_routes(3)
-            if not routes:
-                print_error("No routes available for cost demo.")
-                return
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own routes (interactive)")
+            
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
+            
+            if mode_choice == '2':
+                # User selection mode
+                routes = self._cost_integration_user_selection()
+                if not routes:
+                    print_info("Cost integration test cancelled.")
+                    return
+                data_source = "Database"
+            else:
+                # Fallback mode - get first few routes from database
+                routes_data = self.data_service.get_all('routes')
+                if not routes_data:
+                    print_error("No routes available for cost demo.")
+                    return
+                    
+                # Convert first 3 routes for testing
+                routes = []
+                for route_dict in routes_data[:3]:
+                    route = self._dict_to_route(route_dict)
+                    if not route:
+                        route = self._create_simple_route_from_dict(route_dict)
+                    if route:
+                        routes.append(route)
+                        
+                if not routes:
+                    print_error("Failed to load test routes.")
+                    return
+                    
+                data_source = "Fallback Data"
 
-            # Display route data information for multiple routes
-            route_source = self._data_sources.get('routes', 'Fallback Data')
-            items = [("Source", route_source), ("Routes Available", len(routes))]
+            # Display selected routes data information
+            items = [("Source", data_source), ("Routes Selected", len(routes))]
             for i, route in enumerate(routes, 1):
                 items.append((f"Route {i} ID", route.id))
                 items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
-                items.append((f"Route {i} Profit", f"${route.profitability:.2f}"))
-            self._print_data_info_box("🛣️ MULTIPLE ROUTES DATA", items)
+                items.append((f"Route {i} Current Profit", f"${route.profitability:.2f}"))
+            self._print_data_info_box("🛣️ SELECTED ROUTES DATA", items)
 
-            print(f"\n💼 COST ANALYSIS:")
-            print(f"   Cost per mile: ${self.processor.constants.TOTAL_COST_PER_MILE:.3f}")
+            # Display cost constants
+            print(f"\n💼 COST ANALYSIS PARAMETERS:")
+            print(f"   Total cost per mile: ${self.processor.constants.TOTAL_COST_PER_MILE:.3f}")
             print(f"   Trucker cost per mile: ${self.processor.constants.TRUCKER_COST_PER_MILE:.3f}")
             print("")
 
+            # Analyze each route
+            profitable_count = 0
+            losing_count = 0
+            total_distance = 0
+            total_operating_cost = 0
+            total_profit = 0
+
+            print(f"🔍 INDIVIDUAL ROUTE ANALYSIS:")
+            print("")
+
             for i, route in enumerate(routes, 1):
-                distance = route.base_distance()
-                operating_cost = distance * self.processor.constants.TOTAL_COST_PER_MILE
-                trucker_cost = distance * self.processor.constants.TRUCKER_COST_PER_MILE
+                distance_km = route.base_distance()
+                distance_miles = distance_km * 0.621371  # Convert km to miles for cost calculation
                 
-                print(f"   Route {i}: {distance:.1f} km")
+                operating_cost = distance_miles * self.processor.constants.TOTAL_COST_PER_MILE
+                trucker_cost = distance_miles * self.processor.constants.TRUCKER_COST_PER_MILE
+                current_profit = route.profitability
+                net_profit = current_profit - operating_cost
+                
+                # Accumulate totals
+                total_distance += distance_km
+                total_operating_cost += operating_cost
+                total_profit += current_profit
+                
+                print(f"   Route {i} (ID: {route.id}):")
+                print(f"     Distance: {distance_km:.1f} km ({distance_miles:.1f} miles)")
                 print(f"     Operating cost: ${operating_cost:.2f}")
-                print(f"     Trucker cost: ${trucker_cost:.2f}")
-                print(f"     Current profitability: ${route.profitability:.2f}")
+                print(f"     Trucker cost: ${trucker_cost:.2f}")  
+                print(f"     Revenue: ${current_profit:.2f}")
+                print(f"     Net profit: ${net_profit:.2f}")
                 
-                if route.profitability > 0:
-                    print(f"     Status: ✅ PROFITABLE")
+                if net_profit > 0:
+                    print(f"     Status: ✅ PROFITABLE (${net_profit:.2f})")
+                    profitable_count += 1
                 else:
-                    print(f"     Status: ❌ LOSING MONEY")
+                    print(f"     Status: ❌ LOSING MONEY (-${abs(net_profit):.2f})")
+                    losing_count += 1
                 print("")
 
-            print_success("✅ REQUIREMENT 4 COST INTEGRATION IMPLEMENTED")
+            # Summary analysis
+            total_net_profit = total_profit - total_operating_cost
+            avg_profit_per_route = total_net_profit / len(routes)
+            
+            print(f"📊 COST INTEGRATION SUMMARY:")
+            print(f"   Total routes analyzed: {len(routes)}")
+            print(f"   Profitable routes: {profitable_count}")
+            print(f"   Unprofitable routes: {losing_count}")
+            print(f"   Total distance: {total_distance:.1f} km")
+            print(f"   Total operating cost: ${total_operating_cost:.2f}")
+            print(f"   Total revenue: ${total_profit:.2f}")
+            print(f"   Total net profit: ${total_net_profit:.2f}")
+            print(f"   Average profit per route: ${avg_profit_per_route:.2f}")
+
+            # Determine overall result
+            if losing_count == 0 and profitable_count > 0:
+                print_success("✅ REQUIREMENT 4: ALL ROUTES PROFITABLE")
+            elif profitable_count > 0 and losing_count > 0:
+                print_warning("⚠️ REQUIREMENT 4: MIXED PROFITABILITY - Some routes losing money")
+            elif profitable_count == 0 and losing_count > 0:
+                print_error("❌ REQUIREMENT 4: ALL ROUTES UNPROFITABLE")
+            else:
+                print_error("⚠️ REQUIREMENT 4: NEEDS VERIFICATION")
 
         except Exception as e:
             print_error(f"Error in cost demo: {e}")
