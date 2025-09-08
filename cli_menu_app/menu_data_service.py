@@ -528,6 +528,77 @@ class DataService:
                 logger.error(f"Error deleting {entity_type} {entity_id}: {e}")
                 return False
 
+    def create(self, entity_type: str, data: Dict) -> Dict:
+        """Create new entity - wrapper for create_entity"""
+        return self.create_entity(entity_type, data)
+
+    def update(self, entity_type: str, entity_id: int, data: Dict) -> Dict:
+        """Update existing entity"""
+        if self.mode == "api":
+            try:
+                return self.api_client.update(entity_type, entity_id, data)
+            except Exception as e:
+                logger.error(f"API update error: {e}")
+                return {"error": str(e)}
+        else:
+            # Map entity types to database models
+            entity_models = {
+                'trucks': Truck,
+                'orders': Order,
+                'routes': Route,
+                'clients': Client,
+                'locations': Location,
+                'packages': Package,
+                'cargo': Cargo
+            }
+
+            if entity_type not in entity_models:
+                raise ValueError(f"Unknown entity type: {entity_type}")
+
+            model = entity_models[entity_type]
+            db_entity = self.session.get(model, entity_id)
+
+            if not db_entity:
+                return {"error": f"{entity_type} with ID {entity_id} not found"}
+
+            # Update fields with provided data
+            for field_name, value in data.items():
+                if hasattr(db_entity, field_name):
+                    # Handle special data type conversions
+                    if field_name == 'created_at' and isinstance(value, str):
+                        from datetime import datetime
+                        value = datetime.fromisoformat(value)
+                    elif field_name == 'type' and entity_type == 'packages' and isinstance(value, str):
+                        from schemas.schemas import CargoType
+                        value = CargoType(value)
+
+                    setattr(db_entity, field_name, value)
+
+            try:
+                self.session.add(db_entity)
+                self.session.commit()
+                self.session.refresh(db_entity)
+
+                # Convert back to dictionary for return
+                entity_dict = {}
+                for field_name in model.__table__.columns.keys():
+                    value = getattr(db_entity, field_name)
+                    if value is None:
+                        entity_dict[field_name] = None
+                    elif isinstance(value, datetime):
+                        entity_dict[field_name] = value.isoformat()
+                    # Handle enum serialization
+                    elif hasattr(value, 'value'):
+                        entity_dict[field_name] = value.value
+                    else:
+                        entity_dict[field_name] = value
+
+                return entity_dict
+            except Exception as e:
+                self.session.rollback()
+                logger.error(f"Error updating {entity_type} {entity_id}: {e}")
+                return {"error": str(e)}
+
 
 def parse_cli_args() -> Dict:
     """Parse command line arguments"""

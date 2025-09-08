@@ -15,7 +15,7 @@ if app_dir not in sys.path:
 # Import from local cli_menu_app data_service (not root)
 from menu_system import MenuSystem
 from ui_components import print_error, print_success, Colors
-from data_service import create_data_service
+from menu_data_service import create_data_service
 
 
 # TODO: This function 'main' is duplicated in db_manager.py
