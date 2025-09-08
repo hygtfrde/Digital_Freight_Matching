@@ -44,6 +44,26 @@ class RequirementFunctions:
                 print(f"{Colors.WARNING}│{Colors.ENDC} {key:<15}: {value}")
         print(f"{Colors.WARNING}└" + "─" * 60 + f"┘{Colors.ENDC}")
 
+    def _format_table_data_limited(self, data: List[dict], headers: List[str], limit: int = 25) -> None:
+        """Format and print tabular data with row limit and total count"""
+        from ui_components import format_table_data, print_info, Colors
+        
+        if not data:
+            print_info("No data found.")
+            return
+        
+        total_count = len(data)
+        display_data = data[:limit]
+        
+        # Use the existing format_table_data function
+        format_table_data(display_data, headers)
+        
+        # Show total count info
+        if total_count > limit:
+            print(f"\n{Colors.CYAN}📊 Showing {len(display_data)} of {total_count} total rows{Colors.ENDC}")
+        else:
+            print(f"\n{Colors.CYAN}📊 Total: {total_count} rows{Colors.ENDC}")
+
     def _display_route_info(self, route: Route, data_source: str = "Database"):
         """Display detailed route information"""
         items = [
@@ -277,7 +297,7 @@ class RequirementFunctions:
                 return None
             
             print(f"Available Routes:")
-            format_table_data(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            self._format_table_data_limited(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
             print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             while True:
@@ -316,7 +336,7 @@ class RequirementFunctions:
                 return None
             
             print(f"Available Trucks:")
-            format_table_data(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
+            self._format_table_data_limited(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
             print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             while True:
@@ -351,7 +371,7 @@ class RequirementFunctions:
                 return None
             
             print(f"Available Locations:")
-            format_table_data(locations_data, ['id', 'lat', 'lng', 'marked'])
+            self._format_table_data_limited(locations_data, ['id', 'lat', 'lng', 'marked'])
             print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             locations = []
