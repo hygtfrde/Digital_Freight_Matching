@@ -36,13 +36,13 @@ class RequirementFunctions:
 
     def _print_data_info_box(self, title: str, items: List[tuple]):
         """Print a formatted data information box"""
-        print(f"\n{Colors.WARNING}┌─ {title} " + "─" * (58 - len(title)) + "┐{Colors.ENDC}")
+        print(f"\n{Colors.WARNING}┌─ {title} " + "─" * (58 - len(title)) + f"┐{Colors.ENDC}")
         for key, value in items:
             if len(str(value)) > 45:
                 print(f"{Colors.WARNING}│{Colors.ENDC} {key:<15}: {str(value)[:45]}...")
             else:
                 print(f"{Colors.WARNING}│{Colors.ENDC} {key:<15}: {value}")
-        print(f"{Colors.WARNING}└" + "─" * 60 + "┘{Colors.ENDC}")
+        print(f"{Colors.WARNING}└" + "─" * 60 + f"┘{Colors.ENDC}")
 
     def _display_route_info(self, route: Route, data_source: str = "Database"):
         """Display detailed route information"""
