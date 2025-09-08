@@ -1006,6 +1006,154 @@ class RequirementFunctions:
         except Exception as e:
             print_error(f"Error in cost demo: {e}")
 
+    def _cargo_aggregation_user_selection(self):
+        """Allow user to select route, truck, and orders for cargo aggregation testing"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 CARGO AGGREGATION TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 55)
+            
+            # Step 1: Select Route
+            print(f"\n🛣️ STEP 1: SELECT ROUTE FOR AGGREGATION")
+            print("-" * 40)
+            
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes available in database.")
+                return None
+            
+            print(f"Available Routes:")
+            self._format_table_data_limited(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
+            
+            while True:
+                route_id_input = get_input("Select Route ID (or 'back'/'cancel')")
+                if route_id_input.lower() in ['cancel', 'back']:
+                    return None
+                try:
+                    route_id = int(route_id_input)
+                    route_dict = next((r for r in routes_data if r.get('id') == route_id), None)
+                    if route_dict:
+                        route = self._dict_to_route(route_dict)
+                        if not route:
+                            route = self._create_simple_route_from_dict(route_dict)
+                        if route:
+                            break
+                    else:
+                        print_error(f"Route ID {route_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Route ID number.")
+            
+            print_success(f"✅ Selected Route ID: {route.id}")
+            
+            # Step 2: Select Truck
+            print(f"\n🚛 STEP 2: SELECT TRUCK FOR CAPACITY VALIDATION")
+            print("-" * 45)
+            
+            trucks_data = self.data_service.get_all('trucks')
+            if not trucks_data:
+                print_error("No trucks available in database.")
+                return None
+            
+            print(f"Available Trucks:")
+            self._format_table_data_limited(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
+            
+            while True:
+                truck_id_input = get_input("Select Truck ID (or 'back'/'cancel')")
+                if truck_id_input.lower() in ['cancel', 'back']:
+                    return None
+                try:
+                    truck_id = int(truck_id_input)
+                    truck_dict = next((t for t in trucks_data if t.get('id') == truck_id), None)
+                    if truck_dict:
+                        truck = self._dict_to_truck(truck_dict)
+                        if truck:
+                            break
+                    else:
+                        print_error(f"Truck ID {truck_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Truck ID number.")
+            
+            print_success(f"✅ Selected Truck ID: {truck.id} (Capacity: {truck.capacity}m³)")
+            
+            # Step 3: Select Multiple Orders for Aggregation
+            print(f"\n📦 STEP 3: SELECT ORDERS TO AGGREGATE")
+            print("-" * 35)
+            
+            orders_data = self.data_service.get_all('orders')
+            if not orders_data:
+                print_error("No orders available in database.")
+                return None
+            
+            print(f"Available Orders:")
+            self._format_table_data_limited(orders_data, ['id', 'location_origin_id', 'location_destiny_id', 'client_id'])
+            print(f"\n💡 Select multiple orders by entering IDs separated by commas (e.g., 1,2,3)")
+            print(f"💡 Type 'back' or 'cancel' to return to previous menu")
+            
+            orders = []
+            while True:
+                order_ids_input = get_input("Enter Order IDs (comma-separated) (or 'back'/'cancel')")
+                if order_ids_input.lower() in ['cancel', 'back']:
+                    return None
+                    
+                try:
+                    # Parse comma-separated IDs
+                    order_ids = [int(x.strip()) for x in order_ids_input.split(',') if x.strip()]
+                    if not order_ids:
+                        print_error("Please enter at least one order ID.")
+                        continue
+                        
+                    if len(order_ids) < 2:
+                        print_warning("Aggregation works better with multiple orders. Consider selecting 2-5 orders.")
+                        confirm = get_input("Continue with single order? (y/N): ")
+                        if confirm.lower() != 'y':
+                            continue
+                    
+                    # Validate all IDs exist
+                    found_orders = []
+                    missing_ids = []
+                    
+                    for order_id in order_ids:
+                        order_dict = next((o for o in orders_data if o.get('id') == order_id), None)
+                        if order_dict:
+                            # For simplicity, create basic order info
+                            found_orders.append({
+                                'id': order_dict.get('id'),
+                                'origin_id': order_dict.get('location_origin_id'),
+                                'destiny_id': order_dict.get('location_destiny_id'),
+                                'client_id': order_dict.get('client_id')
+                            })
+                        else:
+                            missing_ids.append(order_id)
+                    
+                    if missing_ids:
+                        print_error(f"Order IDs not found: {missing_ids}")
+                        continue
+                        
+                    if found_orders:
+                        orders = found_orders
+                        break
+                        
+                except ValueError:
+                    print_error("Please enter valid numeric order IDs separated by commas.")
+            
+            print_success(f"✅ Selected {len(orders)} orders for aggregation")
+            for order in orders:
+                print(f"   • Order {order['id']}: Origin {order['origin_id']} → Destiny {order['destiny_id']}")
+            
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Route: {route.id}, Truck: {truck.id}, Orders: {[o['id'] for o in orders]}")
+            
+            return {
+                'route': route,
+                'truck': truck,
+                'orders': orders
+            }
+            
+        except Exception as e:
+            print_error(f"Error in cargo aggregation user selection: {e}")
+            return None
+
     def _demo_cargo_aggregation(self):
         """Requirement 5: Cargo Aggregation"""
         print(f"\n{Colors.CYAN}📊 REQUIREMENT 5: CARGO AGGREGATION{Colors.ENDC}")
@@ -1020,56 +1168,215 @@ class RequirementFunctions:
         print("• Improved route profitability")
 
         try:
-            routes = self._get_sample_routes(1)
-            trucks = self._get_sample_trucks(1)
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own route, truck, and orders (interactive)")
             
-            if not routes or not trucks:
-                print_error("Insufficient data for aggregation demo.")
-                return
-
-            route = routes[0]
-            truck = trucks[0]
-
-            # Display data information boxes
-            route_source = self._data_sources.get('routes', 'Fallback Data')
-            truck_source = self._data_sources.get('trucks', 'Fallback Data')
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
             
-            self._display_route_info(route, route_source)
-            self._display_truck_info(truck, truck_source)
+            if mode_choice == '2':
+                # User selection mode
+                selected_data = self._cargo_aggregation_user_selection()
+                if not selected_data:
+                    print_info("Cargo aggregation test cancelled.")
+                    return
+                
+                route = selected_data['route']
+                truck = selected_data['truck']
+                orders = selected_data['orders']
+                data_source = "Database"
+                
+            else:
+                # Fallback mode - get sample data from database
+                routes_data = self.data_service.get_all('routes')
+                trucks_data = self.data_service.get_all('trucks')
+                orders_data = self.data_service.get_all('orders')
+                
+                if not routes_data or not trucks_data or not orders_data:
+                    print_error("Insufficient data for aggregation demo.")
+                    return
+                
+                # Use first available route and truck
+                route_dict = routes_data[0]
+                truck_dict = trucks_data[0]
+                
+                route = self._dict_to_route(route_dict)
+                if not route:
+                    route = self._create_simple_route_from_dict(route_dict)
+                truck = self._dict_to_truck(truck_dict)
+                
+                # Use first few orders
+                orders = []
+                for order_dict in orders_data[:3]:
+                    orders.append({
+                        'id': order_dict.get('id'),
+                        'origin_id': order_dict.get('location_origin_id'),
+                        'destiny_id': order_dict.get('location_destiny_id'),
+                        'client_id': order_dict.get('client_id')
+                    })
+                    
+                data_source = "Fallback Data"
 
-            print(f"\n📈 AGGREGATION SIMULATION:")
+            # Display selected data information boxes
+            self._display_route_info(route, data_source)
+            self._display_truck_info(truck, data_source)
+            
+            # Display orders information
+            order_items = [
+                ("Source", data_source),
+                ("Orders Selected", len(orders)),
+                ("Order IDs", [o['id'] for o in orders])
+            ]
+            
+            for i, order in enumerate(orders, 1):
+                order_items.extend([
+                    (f"Order {i} ID", order['id']),
+                    (f"Order {i} Route", f"{order['origin_id']} → {order['destiny_id']}")
+                ])
+            
+            self._print_data_info_box("📦 ORDERS DATA", order_items)
+
+            # Perform aggregation analysis
+            print(f"\n🔍 CARGO AGGREGATION ANALYSIS:")
             print(f"   Base route profitability: ${route.profitability:.2f}")
             print(f"   Truck capacity: {truck.capacity:.0f}m³")
+            print("")
             
-            # Simulate adding orders
-            capacity_used = 0
-            orders_added = 0
-            revenue_added = 0
-
-            while capacity_used < truck.capacity * 0.8:  # Use up to 80% capacity
-                order_volume = min(5.0 + (orders_added * 2), truck.capacity - capacity_used)
-                order_revenue = order_volume * 25  # Simulate $25/m³ revenue
+            # Calculate aggregation potential
+            base_profitability = route.profitability
+            total_capacity_used = 0
+            total_revenue_added = 0
+            aggregated_count = 0
+            
+            # Simulate capacity usage for each order (simplified)
+            for i, order in enumerate(orders, 1):
+                # Simulate order volume (5-15 m³ per order)
+                order_volume = 5.0 + (i * 2.5)  # Increasing volume per order
+                order_revenue = order_volume * 20  # $20 per m³
                 
-                capacity_used += order_volume
-                orders_added += 1
-                revenue_added += order_revenue
-                
-                utilization = (capacity_used / truck.capacity) * 100
-                new_profitability = route.profitability + revenue_added
-                
-                print(f"   + Order {orders_added}: {order_volume:.1f}m³, ${order_revenue:.0f}")
-                print(f"     Capacity: {utilization:.1f}%, Profitability: ${new_profitability:.2f}")
+                if total_capacity_used + order_volume <= truck.capacity * 0.9:  # 90% capacity limit
+                    total_capacity_used += order_volume
+                    total_revenue_added += order_revenue
+                    aggregated_count += 1
+                    
+                    utilization = (total_capacity_used / truck.capacity) * 100
+                    running_profit = base_profitability + total_revenue_added
+                    
+                    print(f"   + Order {order['id']}: {order_volume:.1f}m³, ${order_revenue:.0f} revenue")
+                    print(f"     Capacity used: {utilization:.1f}%, Running profit: ${running_profit:.2f}")
+                else:
+                    print(f"   - Order {order['id']}: {order_volume:.1f}m³ - EXCEEDS CAPACITY")
+                    break
 
-            print(f"\n📊 AGGREGATION RESULTS:")
-            print(f"   Orders aggregated: {orders_added}")
-            print(f"   Capacity utilization: {utilization:.1f}%")
-            print(f"   Additional revenue: ${revenue_added:.2f}")
-            print(f"   Final profitability: ${route.profitability + revenue_added:.2f}")
+            # Summary
+            final_profitability = base_profitability + total_revenue_added
+            capacity_utilization = (total_capacity_used / truck.capacity) * 100
+            
+            print(f"\n📊 AGGREGATION SUMMARY:")
+            print(f"   Orders successfully aggregated: {aggregated_count} of {len(orders)}")
+            print(f"   Total capacity utilization: {capacity_utilization:.1f}%")
+            print(f"   Additional revenue generated: ${total_revenue_added:.2f}")
+            print(f"   Original profitability: ${base_profitability:.2f}")
+            print(f"   Final profitability: ${final_profitability:.2f}")
+            print(f"   Profitability improvement: ${total_revenue_added:.2f}")
 
-            print_success("✅ REQUIREMENT 5 CARGO AGGREGATION IMPLEMENTED")
+            # Determine result
+            if aggregated_count == len(orders) and capacity_utilization > 50:
+                print_success("✅ REQUIREMENT 5: ALL ORDERS AGGREGATED SUCCESSFULLY")
+            elif aggregated_count > 0 and aggregated_count < len(orders):
+                print_warning("⚠️ REQUIREMENT 5: PARTIAL AGGREGATION - Some orders exceed capacity")
+            elif aggregated_count == 0:
+                print_error("❌ REQUIREMENT 5: NO ORDERS COULD BE AGGREGATED")
+            else:
+                print_success("✅ REQUIREMENT 5: AGGREGATION DEMONSTRATED")
 
         except Exception as e:
             print_error(f"Error in aggregation demo: {e}")
+
+    def _route_constraints_user_selection(self):
+        """Allow user to select routes for constraint analysis"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 ROUTE CONSTRAINTS TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 55)
+            
+            # Step 1: Select Multiple Routes for Constraint Analysis
+            print(f"\n🛣️ STEP 1: SELECT ROUTES FOR CONSTRAINT ANALYSIS")
+            print("-" * 45)
+            
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes available in database.")
+                return None
+            
+            print(f"Available Routes:")
+            self._format_table_data_limited(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            print(f"\n💡 Select multiple routes by entering IDs separated by commas (e.g., 1,2,3)")
+            print(f"💡 Type 'back' or 'cancel' to return to previous menu")
+            
+            routes = []
+            while True:
+                route_ids_input = get_input("Enter Route IDs (comma-separated) (or 'back'/'cancel')")
+                if route_ids_input.lower() in ['cancel', 'back']:
+                    return None
+                    
+                try:
+                    # Parse comma-separated IDs
+                    route_ids = [int(x.strip()) for x in route_ids_input.split(',') if x.strip()]
+                    if not route_ids:
+                        print_error("Please enter at least one route ID.")
+                        continue
+                        
+                    if len(route_ids) < 2:
+                        print_warning("Constraint analysis works better with multiple routes. Consider selecting 2-5 routes.")
+                        confirm = get_input("Continue with single route? (y/N): ")
+                        if confirm.lower() != 'y':
+                            continue
+                    
+                    # Validate all IDs exist and convert
+                    found_routes = []
+                    missing_ids = []
+                    
+                    for route_id in route_ids:
+                        route_dict = next((r for r in routes_data if r.get('id') == route_id), None)
+                        if route_dict:
+                            route = self._dict_to_route(route_dict)
+                            if not route:
+                                route = self._create_simple_route_from_dict(route_dict)
+                            if route:
+                                found_routes.append(route)
+                            else:
+                                missing_ids.append(route_id)
+                        else:
+                            missing_ids.append(route_id)
+                    
+                    if missing_ids:
+                        print_error(f"Route IDs not found: {missing_ids}")
+                        continue
+                        
+                    if found_routes:
+                        routes = found_routes
+                        break
+                        
+                except ValueError:
+                    print_error("Please enter valid numeric route IDs separated by commas.")
+            
+            print_success(f"✅ Selected {len(routes)} routes for constraint analysis")
+            for route in routes:
+                print(f"   • Route {route.id}: {route.base_distance():.1f} km, ${route.profitability:.2f}")
+                
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Routes: {[route.id for route in routes]}")
+            
+            return routes
+            
+        except Exception as e:
+            print_error(f"Error in route constraints user selection: {e}")
+            return None
 
     def _demo_route_constraints(self):
         """Requirement 6: Route Constraints"""
@@ -1086,48 +1393,221 @@ class RequirementFunctions:
         print("• Cost optimization")
 
         try:
-            routes = self._get_sample_routes(2)
-            if not routes:
-                print_error("No routes available for constraint demo.")
-                return
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own routes (interactive)")
+            
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
+            
+            if mode_choice == '2':
+                # User selection mode
+                routes = self._route_constraints_user_selection()
+                if not routes:
+                    print_info("Route constraints test cancelled.")
+                    return
+                data_source = "Database"
+            else:
+                # Fallback mode - get first few routes from database
+                routes_data = self.data_service.get_all('routes')
+                if not routes_data:
+                    print_error("No routes available for constraint demo.")
+                    return
+                    
+                # Convert first 3 routes for testing
+                routes = []
+                for route_dict in routes_data[:3]:
+                    route = self._dict_to_route(route_dict)
+                    if not route:
+                        route = self._create_simple_route_from_dict(route_dict)
+                    if route:
+                        routes.append(route)
+                        
+                if not routes:
+                    print_error("Failed to load test routes.")
+                    return
+                    
+                data_source = "Fallback Data"
 
-            # Display route data information
-            route_source = self._data_sources.get('routes', 'Fallback Data')
-            items = [("Source", route_source), ("Routes Available", len(routes))]
+            # Display selected routes data information
+            items = [("Source", data_source), ("Routes Selected", len(routes))]
             for i, route in enumerate(routes, 1):
                 items.append((f"Route {i} ID", route.id))
                 items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
-                items.append((f"Route {i} Status", "✅ Profitable" if route.profitability >= 0 else "❌ Unprofitable"))
+                items.append((f"Route {i} Profitability", f"${route.profitability:.2f}"))
             self._print_data_info_box("🔍 CONSTRAINT ANALYSIS DATA", items)
 
+            # Perform constraint analysis
             print(f"\n🔍 ROUTE CONSTRAINT ANALYSIS:")
             
+            passed_constraints = 0
+            failed_constraints = 0
+            total_routes = len(routes)
+            
+            # Constraint thresholds (business rules)
+            MAX_DISTANCE_KM = 500.0
+            MIN_PROFITABILITY = 0.0
+            MAX_ROUTE_TIME_HOURS = self.processor.constants.MAX_ROUTE_HOURS  # 10 hours
+            COST_PER_MILE = self.processor.constants.TOTAL_COST_PER_MILE
+            
+            print(f"   Constraint Thresholds:")
+            print(f"     Maximum distance: {MAX_DISTANCE_KM} km")
+            print(f"     Minimum profitability: ${MIN_PROFITABILITY}")
+            print(f"     Maximum route time: {MAX_ROUTE_TIME_HOURS} hours")
+            print("")
+            
             for i, route in enumerate(routes, 1):
-                print(f"   Route {i}:")
-                distance = route.base_distance()
-                print(f"     Distance: {distance:.1f} km")
-                print(f"     Profitability: ${route.profitability:.2f}")
+                distance_km = route.base_distance()
+                distance_miles = distance_km * 0.621371
+                profitability = route.profitability
+                
+                # Calculate estimated time (simplified)
+                travel_time_hours = distance_km / 60  # Assume 60 km/h average
+                operating_cost = distance_miles * COST_PER_MILE
+                
+                print(f"   Route {i} (ID: {route.id}):")
+                print(f"     Distance: {distance_km:.1f} km ({distance_miles:.1f} miles)")
+                print(f"     Estimated travel time: {travel_time_hours:.1f} hours")
+                print(f"     Operating cost: ${operating_cost:.2f}")
+                print(f"     Profitability: ${profitability:.2f}")
                 
                 # Analyze constraints
-                constraints = []
-                if route.profitability < 0:
-                    constraints.append("❌ Unprofitable route")
-                else:
-                    constraints.append("✅ Profitable route")
+                route_passed = True
+                constraints_status = []
                 
-                if distance > 500:
-                    constraints.append("⚠️  Long distance route")
+                # Distance constraint
+                if distance_km <= MAX_DISTANCE_KM:
+                    constraints_status.append("✅ Distance within limit")
                 else:
-                    constraints.append("✅ Manageable distance")
+                    constraints_status.append("❌ Distance exceeds limit")
+                    route_passed = False
                 
-                for constraint in constraints:
-                    print(f"       {constraint}")
+                # Profitability constraint
+                if profitability >= MIN_PROFITABILITY:
+                    constraints_status.append("✅ Meets profitability requirement")
+                else:
+                    constraints_status.append("❌ Below profitability threshold")
+                    route_passed = False
+                
+                # Time constraint
+                if travel_time_hours <= MAX_ROUTE_TIME_HOURS:
+                    constraints_status.append("✅ Within time limit")
+                else:
+                    constraints_status.append("⚠️ Exceeds recommended time")
+                    # Note: Not failing the route for time, just warning
+                
+                # Cost efficiency (profitability vs cost)
+                net_profit = profitability - operating_cost
+                if net_profit > 0:
+                    constraints_status.append("✅ Cost efficient")
+                else:
+                    constraints_status.append("❌ Not cost efficient")
+                    route_passed = False
+                
+                for status in constraints_status:
+                    print(f"       {status}")
+                
+                if route_passed:
+                    print(f"     Overall: ✅ PASSES ALL CONSTRAINTS")
+                    passed_constraints += 1
+                else:
+                    print(f"     Overall: ❌ FAILS CONSTRAINTS")
+                    failed_constraints += 1
+                    
                 print("")
 
-            print_success("✅ REQUIREMENT 6 ROUTE CONSTRAINTS IMPLEMENTED")
+            # Summary analysis
+            constraint_compliance_rate = (passed_constraints / total_routes) * 100
+            
+            print(f"📊 CONSTRAINT ANALYSIS SUMMARY:")
+            print(f"   Total routes analyzed: {total_routes}")
+            print(f"   Routes passing constraints: {passed_constraints}")
+            print(f"   Routes failing constraints: {failed_constraints}")
+            print(f"   Constraint compliance rate: {constraint_compliance_rate:.1f}%")
+
+            # Determine overall result
+            if failed_constraints == 0 and passed_constraints > 0:
+                print_success("✅ REQUIREMENT 6: ALL ROUTES MEET CONSTRAINTS")
+            elif passed_constraints > 0 and failed_constraints > 0:
+                print_warning("⚠️ REQUIREMENT 6: MIXED CONSTRAINT COMPLIANCE")
+            elif passed_constraints == 0 and failed_constraints > 0:
+                print_error("❌ REQUIREMENT 6: NO ROUTES MEET CONSTRAINTS")
+            else:
+                print_error("⚠️ REQUIREMENT 6: NEEDS VERIFICATION")
 
         except Exception as e:
             print_error(f"Error in route constraints demo: {e}")
+
+    def _union_breaks_user_selection(self) -> List[Route]:
+        """Allow user to select routes for union break analysis"""
+        try:
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes found in database.")
+                return None
+            
+            print(f"\n📋 Available Routes (showing first 25 of {len(routes_data)} total):")
+            print("=" * 80)
+            
+            # Convert to Route objects and show limited list
+            available_routes = []
+            for route_dict in routes_data[:25]:
+                route = self._dict_to_route(route_dict)
+                if not route:
+                    route = self._create_simple_route_from_dict(route_dict)
+                if route:
+                    available_routes.append(route)
+                    distance = route.base_distance()
+                    drive_time = distance / 60  # Assume 60 km/h average speed
+                    print(f"  {route.id:3d}. Distance: {distance:6.1f}km | Drive Time: {drive_time:5.1f}h | Profit: ${route.profitability:8.2f}")
+            
+            if len(routes_data) > 25:
+                print(f"  ... and {len(routes_data) - 25} more routes")
+            
+            print(f"\nTotal routes available: {len(routes_data)}")
+            
+            while True:
+                route_ids_input = get_input("\nEnter route IDs for union break analysis (comma-separated, e.g., 1,2,3): ")
+                if not route_ids_input.strip():
+                    print_error("Route selection is required.")
+                    continue
+                
+                try:
+                    route_ids = [int(id_str.strip()) for id_str in route_ids_input.split(',')]
+                    
+                    # Find selected routes
+                    selected_routes = []
+                    for route_id in route_ids:
+                        route_dict = next((r for r in routes_data if r['id'] == route_id), None)
+                        if not route_dict:
+                            print_error(f"Route ID {route_id} not found.")
+                            break
+                        
+                        route = self._dict_to_route(route_dict)
+                        if not route:
+                            route = self._create_simple_route_from_dict(route_dict)
+                        
+                        if route:
+                            selected_routes.append(route)
+                    else:
+                        # All routes found successfully
+                        if selected_routes:
+                            return selected_routes
+                        else:
+                            print_error("No valid routes could be created from selection.")
+                            continue
+                    
+                except ValueError:
+                    print_error("Please enter valid route IDs (numbers only, comma-separated).")
+                    continue
+                
+        except Exception as e:
+            print_error(f"Error in route selection: {e}")
+            return None
 
     def _demo_union_breaks(self):
         """Bonus Requirement: Union Breaks"""
@@ -1139,18 +1619,39 @@ class RequirementFunctions:
 
         print_info("Union break rules:")
         print("• Maximum 8 hours continuous driving")
-        print("• 30-minute break every 4 hours")
+        print("• 30-minute break every 4 hours") 
         print("• 10-hour mandatory rest after 14-hour shift")
+        print("• Analysis based on 60 km/h average driving speed")
 
         try:
-            routes = self._get_sample_routes(2)
-            if not routes:
-                print_error("No routes available for union break demo.")
-                return
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own routes (interactive)")
+            
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
+            
+            if mode_choice == '2':
+                # User selection mode
+                routes = self._union_breaks_user_selection()
+                if not routes:
+                    print_info("Union breaks analysis cancelled.")
+                    return
+                data_source = "Database"
+            else:
+                # Fallback mode
+                routes = self._get_sample_routes(2)
+                if not routes:
+                    print_error("No routes available for union break demo.")
+                    return
+                data_source = "Fallback Data"
 
             # Display route data information
-            route_source = self._data_sources.get('routes', 'Fallback Data')
-            items = [("Source", route_source), ("Routes for Analysis", len(routes))]
+            items = [("Source", data_source), ("Routes for Analysis", len(routes))]
             for i, route in enumerate(routes, 1):
                 items.append((f"Route {i} ID", route.id))
                 items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
@@ -1160,30 +1661,115 @@ class RequirementFunctions:
 
             print(f"\n⏰ BREAK REQUIREMENT ANALYSIS:")
             
+            all_compliant = True
+            total_routes_analyzed = len(routes)
+            compliant_routes = 0
+            
             for i, route in enumerate(routes, 1):
                 distance = route.base_distance()
-                drive_time = distance / 60  # Assume 60 mph
+                drive_time = distance / 60  # Assume 60 km/h average speed
                 
-                breaks_needed = int(drive_time / 4)  # Break every 4 hours
+                # Union break calculation
+                breaks_needed = max(0, int(drive_time / 4))  # Break every 4 hours
                 break_time = breaks_needed * 0.5  # 30 minutes per break
                 total_time = drive_time + break_time
                 
-                print(f"   Route {i}: {distance:.1f} km")
-                print(f"     Drive time: {drive_time:.1f} hours")
-                print(f"     Breaks needed: {breaks_needed}")
-                print(f"     Break time: {break_time:.1f} hours")
+                print(f"   Route {i} (ID: {route.id}): {distance:.1f} km")
+                print(f"     Base drive time: {drive_time:.1f} hours")
+                print(f"     Breaks required: {breaks_needed} × 30min = {break_time:.1f}h")
                 print(f"     Total time: {total_time:.1f} hours")
                 
+                # Union compliance check
                 if total_time > 14:
-                    print(f"     Status: ❌ REQUIRES OVERNIGHT REST")
+                    print(f"     ❌ UNION VIOLATION - Exceeds 14-hour limit")
+                    print(f"     📅 Requires overnight rest period")
+                    all_compliant = False
+                elif drive_time > 8:
+                    print(f"     ❌ UNION VIOLATION - Exceeds 8-hour continuous driving")
+                    all_compliant = False
                 else:
-                    print(f"     Status: ✅ WITHIN DAILY LIMITS")
+                    print(f"     ✅ UNION COMPLIANT - Within daily limits")
+                    compliant_routes += 1
                 print("")
 
-            print_success("✅ BONUS REQUIREMENT UNION BREAKS IMPLEMENTED")
+            # Overall summary
+            print(f"📊 UNION BREAKS COMPLIANCE SUMMARY:")
+            print(f"   • Total routes analyzed: {total_routes_analyzed}")
+            print(f"   • Compliant routes: {compliant_routes}")
+            print(f"   • Non-compliant routes: {total_routes_analyzed - compliant_routes}")
+            print(f"   • Compliance rate: {(compliant_routes/total_routes_analyzed*100):.1f}%")
+            print("")
+
+            if all_compliant:
+                print_success("✅ REQUIREMENT 7: ALL ROUTES UNION COMPLIANT")
+            else:
+                print_warning(f"⚠️ REQUIREMENT 7: {total_routes_analyzed - compliant_routes} ROUTES REQUIRE SCHEDULE ADJUSTMENT")
 
         except Exception as e:
             print_error(f"Error in union breaks demo: {e}")
+
+    def _cargo_types_user_selection(self) -> List[any]:
+        """Allow user to select cargo loads for compatibility analysis"""
+        try:
+            cargo_data = self.data_service.get_all('cargo')
+            if not cargo_data:
+                print_error("No cargo found in database.")
+                return None
+            
+            print(f"\n📋 Available Cargo (showing first 25 of {len(cargo_data)} total):")
+            print("=" * 80)
+            
+            # Show limited list with package details
+            available_cargo = []
+            for cargo_dict in cargo_data[:25]:
+                available_cargo.append(cargo_dict)
+                packages_data = self.data_service.get_packages_by_cargo_id(cargo_dict['id']) if hasattr(self.data_service, 'get_packages_by_cargo_id') else []
+                
+                if packages_data:
+                    types = [pkg.get('type', 'unknown') for pkg in packages_data]
+                    volume = sum(pkg.get('volume', 0) for pkg in packages_data)
+                    weight = sum(pkg.get('weight', 0) for pkg in packages_data)
+                    print(f"  {cargo_dict['id']:3d}. Packages: {len(packages_data)} | Types: {set(types)} | Vol: {volume:.1f}m³ | Weight: {weight:.1f}kg")
+                else:
+                    print(f"  {cargo_dict['id']:3d}. Order: {cargo_dict.get('order_id', 'N/A')} | Truck: {cargo_dict.get('truck_id', 'N/A')} | (No package details)")
+            
+            if len(cargo_data) > 25:
+                print(f"  ... and {len(cargo_data) - 25} more cargo loads")
+            
+            print(f"\nTotal cargo available: {len(cargo_data)}")
+            
+            while True:
+                cargo_ids_input = get_input("\nEnter cargo IDs for compatibility analysis (comma-separated, e.g., 1,2,3): ")
+                if not cargo_ids_input.strip():
+                    print_error("Cargo selection is required.")
+                    continue
+                
+                try:
+                    cargo_ids = [int(id_str.strip()) for id_str in cargo_ids_input.split(',')]
+                    
+                    # Find selected cargo
+                    selected_cargo = []
+                    for cargo_id in cargo_ids:
+                        cargo_dict = next((c for c in cargo_data if c['id'] == cargo_id), None)
+                        if not cargo_dict:
+                            print_error(f"Cargo ID {cargo_id} not found.")
+                            break
+                        selected_cargo.append(cargo_dict)
+                    else:
+                        # All cargo found successfully
+                        if selected_cargo:
+                            return selected_cargo
+                        else:
+                            print_error("No valid cargo could be found from selection.")
+                            continue
+                    
+                except ValueError:
+                    print_error("Please enter valid cargo IDs (numbers only, comma-separated).")
+                    continue
+                
+        except Exception as e:
+            print_error(f"Error in cargo selection: {e}")
+            return None
 
     def _demo_cargo_types(self):
         """Bonus Requirement: Cargo Types"""
@@ -1194,57 +1780,176 @@ class RequirementFunctions:
         print("=" * 60)
 
         print_info("Cargo type compatibility rules:")
-        print("• Standard cargo: No restrictions")
-        print("• Fragile: Cannot mix with heavy cargo")
-        print("• Refrigerated: Requires temperature control")
-        print("• Hazardous: Special permits and isolation")
+        print("• Standard: Compatible with standard and refrigerated")
+        print("• Fragile: Must be isolated (no mixing)")
+        print("• Refrigerated: Compatible with standard only") 
+        print("• Hazmat: Must be completely isolated")
 
         try:
-            # Display cargo type system information
-            cargo_types = [
-                (CargoType.STANDARD, "Standard cargo"),
-                (CargoType.FRAGILE, "Fragile cargo"),
-                (CargoType.REFRIGERATED, "Refrigerated cargo"),
-                (CargoType.HAZARDOUS, "Hazardous cargo")
-            ]
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Show system compatibility matrix (quick demo)")
+            print("2. Analyze real cargo compatibility (interactive)")
             
-            items = [
-                ("Source", "System Schema"),
-                ("Total Cargo Types", len(cargo_types)),
-                ("Standard", "No restrictions"),
-                ("Fragile", "Isolation required"),
-                ("Refrigerated", "Temperature control + Standard OK"),
-                ("Hazardous", "Special permits + Isolation"),
-                ("Compatibility", "Matrix-based validation")
-            ]
-            self._print_data_info_box("🏷️ CARGO TYPE SYSTEM", items)
-
-            compatibility_matrix = {
-                CargoType.STANDARD: [CargoType.STANDARD],
-                CargoType.FRAGILE: [CargoType.FRAGILE],
-                CargoType.REFRIGERATED: [CargoType.REFRIGERATED, CargoType.STANDARD],
-                CargoType.HAZARDOUS: [CargoType.HAZARDOUS]
-            }
-
-            print(f"\n🔍 CARGO COMPATIBILITY MATRIX:")
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
             
-            for cargo_type, description in cargo_types:
-                compatible = compatibility_matrix[cargo_type]
-                compatible_names = [ct.value for ct in compatible]
+            if mode_choice == '2':
+                # User selection mode
+                selected_cargo = self._cargo_types_user_selection()
+                if not selected_cargo:
+                    print_info("Cargo compatibility analysis cancelled.")
+                    return
+                data_source = "Database"
                 
-                print(f"   {description}:")
-                print(f"     Compatible with: {', '.join(compatible_names)}")
+                # Analyze real cargo compatibility
+                self._analyze_cargo_compatibility(selected_cargo, data_source)
                 
-                if len(compatible) == 1:
-                    print(f"     Restriction: ⚠️  Requires isolated transport")
-                else:
-                    print(f"     Restriction: ✅ Can mix with compatible types")
-                print("")
-
-            print_success("✅ BONUS REQUIREMENT CARGO TYPES IMPLEMENTED")
+            else:
+                # System demonstration mode
+                self._show_cargo_type_matrix()
 
         except Exception as e:
             print_error(f"Error in cargo types demo: {e}")
+
+    def _show_cargo_type_matrix(self):
+        """Show the cargo type compatibility system"""
+        cargo_types = [
+            (CargoType.STANDARD, "Standard cargo"),
+            (CargoType.FRAGILE, "Fragile cargo"), 
+            (CargoType.REFRIGERATED, "Refrigerated cargo"),
+            (CargoType.HAZMAT, "Hazmat cargo")
+        ]
+        
+        items = [
+            ("Source", "System Schema"),
+            ("Total Cargo Types", len(cargo_types)),
+            ("Standard", "Compatible with refrigerated"),
+            ("Fragile", "Requires isolation"), 
+            ("Refrigerated", "Compatible with standard"),
+            ("Hazmat", "Requires complete isolation"),
+            ("Validation", "Matrix-based compatibility check")
+        ]
+        self._print_data_info_box("🏷️ CARGO TYPE SYSTEM", items)
+
+        # Business rule compatibility matrix
+        compatibility_rules = {
+            CargoType.STANDARD: [CargoType.STANDARD, CargoType.REFRIGERATED],
+            CargoType.FRAGILE: [CargoType.FRAGILE],  # Isolated
+            CargoType.REFRIGERATED: [CargoType.REFRIGERATED, CargoType.STANDARD],
+            CargoType.HAZMAT: [CargoType.HAZMAT]  # Completely isolated
+        }
+
+        print(f"\n🔍 CARGO COMPATIBILITY MATRIX:")
+        
+        for cargo_type, description in cargo_types:
+            compatible = compatibility_rules[cargo_type]
+            compatible_names = [ct.value for ct in compatible]
+            
+            print(f"   {description}:")
+            print(f"     Compatible with: {', '.join(compatible_names)}")
+            
+            if len(compatible) == 1:
+                print(f"     Restriction: ⚠️  Requires isolated transport")
+            else:
+                print(f"     Restriction: ✅ Can mix with compatible types")
+            print("")
+
+        print_success("✅ REQUIREMENT 8: CARGO TYPE SYSTEM DEMONSTRATED")
+
+    def _analyze_cargo_compatibility(self, selected_cargo, data_source):
+        """Analyze compatibility of selected real cargo loads"""
+        
+        # Display selected cargo information
+        items = [("Source", data_source), ("Cargo Loads Selected", len(selected_cargo))]
+        
+        cargo_details = []
+        for i, cargo_dict in enumerate(selected_cargo, 1):
+            items.append((f"Cargo {i} ID", cargo_dict['id']))
+            items.append((f"Cargo {i} Order", cargo_dict.get('order_id', 'N/A')))
+            
+            # Get packages for this cargo to determine types
+            packages_data = self.data_service.get_packages_by_cargo_id(cargo_dict['id']) if hasattr(self.data_service, 'get_packages_by_cargo_id') else []
+            
+            if packages_data:
+                types = [pkg.get('type', 'standard') for pkg in packages_data]
+                volume = sum(pkg.get('volume', 0) for pkg in packages_data)
+                weight = sum(pkg.get('weight', 0) for pkg in packages_data)
+                cargo_details.append({
+                    'id': cargo_dict['id'],
+                    'types': set(types),
+                    'volume': volume,
+                    'weight': weight
+                })
+                items.append((f"Cargo {i} Types", str(set(types))))
+                items.append((f"Cargo {i} Volume", f"{volume:.1f}m³"))
+            else:
+                # Fallback - assume standard type
+                cargo_details.append({
+                    'id': cargo_dict['id'],
+                    'types': {'standard'},
+                    'volume': 0,
+                    'weight': 0
+                })
+                items.append((f"Cargo {i} Types", "{'standard'} (assumed)"))
+        
+        self._print_data_info_box("🏷️ CARGO COMPATIBILITY ANALYSIS DATA", items)
+        
+        print(f"\n🔍 COMPATIBILITY ANALYSIS:")
+        
+        # Business rule compatibility matrix
+        incompatible_pairs = [
+            ('hazmat', 'fragile'),
+            ('hazmat', 'standard'),
+            ('hazmat', 'refrigerated'),
+            ('fragile', 'standard'),
+            ('fragile', 'refrigerated')
+        ]
+        
+        all_compatible = True
+        violations = []
+        
+        # Check each pair of cargo loads for compatibility
+        for i, cargo1 in enumerate(cargo_details):
+            for j, cargo2 in enumerate(cargo_details):
+                if i >= j:  # Skip duplicate pairs and self-comparison
+                    continue
+                    
+                print(f"   Cargo {cargo1['id']} vs Cargo {cargo2['id']}:")
+                print(f"     Types: {cargo1['types']} vs {cargo2['types']}")
+                
+                # Check for incompatible combinations
+                compatibility_violations = []
+                for type1 in cargo1['types']:
+                    for type2 in cargo2['types']:
+                        for incompatible_type1, incompatible_type2 in incompatible_pairs:
+                            if ((type1 == incompatible_type1 and type2 == incompatible_type2) or
+                                (type1 == incompatible_type2 and type2 == incompatible_type1)):
+                                compatibility_violations.append(f"{type1} + {type2}")
+                
+                if compatibility_violations:
+                    print(f"     ❌ INCOMPATIBLE - {', '.join(compatibility_violations)}")
+                    violations.extend(compatibility_violations)
+                    all_compatible = False
+                else:
+                    print(f"     ✅ COMPATIBLE")
+                print("")
+        
+        # Overall summary
+        print(f"📊 CARGO COMPATIBILITY SUMMARY:")
+        print(f"   • Total cargo combinations analyzed: {len(selected_cargo) * (len(selected_cargo) - 1) // 2}")
+        print(f"   • Compatible combinations: {(len(selected_cargo) * (len(selected_cargo) - 1) // 2) - len(set(violations))}")
+        print(f"   • Incompatible combinations: {len(set(violations))}")
+        print("")
+
+        if all_compatible:
+            print_success("✅ REQUIREMENT 8: ALL CARGO LOADS COMPATIBLE FOR MIXED TRANSPORT")
+        else:
+            print_warning(f"⚠️ REQUIREMENT 8: INCOMPATIBLE CARGO DETECTED - REQUIRES SEPARATE TRANSPORT")
+            print_warning(f"   Violations: {', '.join(set(violations))}")
 
     def _demo_all_requirements(self):
         """Run all requirements demos in sequence"""
