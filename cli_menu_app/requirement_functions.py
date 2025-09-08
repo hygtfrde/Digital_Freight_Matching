@@ -278,21 +278,27 @@ class RequirementFunctions:
             
             print(f"Available Routes:")
             format_table_data(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             while True:
-                route_id_input = get_input("Select Route ID")
-                if route_id_input.lower() == 'cancel':
+                route_id_input = get_input("Select Route ID (or 'back'/'cancel')")
+                if route_id_input.lower() in ['cancel', 'back']:
                     return None
                 try:
                     route_id = int(route_id_input)
-                    # Get route by ID and convert to Route object
-                    route_dict = self.data_service.get_by_id('routes', route_id)
+                    # Try alternative approach - get all routes and find the one we want
+                    routes_data = self.data_service.get_all('routes')
+                    route_dict = next((r for r in routes_data if r.get('id') == route_id), None)
                     if route_dict:
                         route = self._dict_to_route(route_dict)
                         if route:
                             break
                         else:
-                            print_error("Failed to process route data.")
+                            print_error("Failed to process route data. Let me try a simpler approach.")
+                            # Create a simple route object with available data
+                            route = self._create_simple_route_from_dict(route_dict)
+                            if route:
+                                break
                     else:
                         print_error(f"Route ID {route_id} not found.")
                 except ValueError:
@@ -311,14 +317,17 @@ class RequirementFunctions:
             
             print(f"Available Trucks:")
             format_table_data(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             while True:
-                truck_id_input = get_input("Select Truck ID")
-                if truck_id_input.lower() == 'cancel':
+                truck_id_input = get_input("Select Truck ID (or 'back'/'cancel')")
+                if truck_id_input.lower() in ['cancel', 'back']:
                     return None
                 try:
                     truck_id = int(truck_id_input)
-                    truck_dict = self.data_service.get_by_id('trucks', truck_id)
+                    # Use alternative approach - get all trucks and find the one we want
+                    trucks_data = self.data_service.get_all('trucks')
+                    truck_dict = next((t for t in trucks_data if t.get('id') == truck_id), None)
                     if truck_dict:
                         truck = self._dict_to_truck(truck_dict)
                         if truck:
@@ -343,6 +352,7 @@ class RequirementFunctions:
             
             print(f"Available Locations:")
             format_table_data(locations_data, ['id', 'lat', 'lng', 'marked'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
             
             locations = []
             location_prompts = [
@@ -354,12 +364,14 @@ class RequirementFunctions:
             
             for prompt in location_prompts:
                 while True:
-                    loc_id_input = get_input(f"{prompt}")
-                    if loc_id_input.lower() == 'cancel':
+                    loc_id_input = get_input(f"{prompt} (or 'back'/'cancel')")
+                    if loc_id_input.lower() in ['cancel', 'back']:
                         return None
                     try:
                         loc_id = int(loc_id_input)
-                        loc_dict = self.data_service.get_by_id('locations', loc_id)
+                        # Use alternative approach - get all locations and find the one we want
+                        locations_data = self.data_service.get_all('locations')
+                        loc_dict = next((l for l in locations_data if l.get('id') == loc_id), None)
                         if loc_dict:
                             location = self._dict_to_location(loc_dict)
                             if location:
@@ -380,6 +392,12 @@ class RequirementFunctions:
             
         except Exception as e:
             print_error(f"Error in user selection: {e}")
+            # Add debug info for CRUD issues
+            if "has no attribute" in str(e):
+                print_error("CRUD Methods Debug:")
+                print(f"DataService type: {type(self.data_service)}")
+                print(f"Available methods: {[m for m in dir(self.data_service) if not m.startswith('_')]}")
+                print(f"Mode: {getattr(self.data_service, 'mode', 'Unknown')}")
             return None
 
     def _demo_cargo_capacity(self):
@@ -955,6 +973,47 @@ class RequirementFunctions:
             )
         except Exception as e:
             print_error(f"Error converting location dict: {e}")
+            return None
+
+    def _create_simple_route_from_dict(self, route_dict: dict) -> Optional[Route]:
+        """Create a simple route object when full location data is not available"""
+        try:
+            # Get location IDs from route
+            origin_id = route_dict.get('location_origin_id')
+            destiny_id = route_dict.get('location_destiny_id')
+            
+            if not origin_id or not destiny_id:
+                print_error("Route missing location IDs")
+                return None
+            
+            # Get all locations to find the origin and destiny
+            locations_data = self.data_service.get_all('locations')
+            
+            origin_dict = next((l for l in locations_data if l.get('id') == origin_id), None)
+            destiny_dict = next((l for l in locations_data if l.get('id') == destiny_id), None)
+            
+            if not origin_dict or not destiny_dict:
+                print_error(f"Could not find locations {origin_id} or {destiny_id}")
+                return None
+                
+            origin = self._dict_to_location(origin_dict)
+            destiny = self._dict_to_location(destiny_dict)
+            
+            if not origin or not destiny:
+                print_error("Failed to convert location data")
+                return None
+                
+            return Route(
+                id=route_dict.get('id', 1),
+                location_origin_id=origin_id,
+                location_destiny_id=destiny_id,
+                location_origin=origin,
+                location_destiny=destiny,
+                profitability=route_dict.get('profitability', -50.0),
+                orders=[]
+            )
+        except Exception as e:
+            print_error(f"Error creating simple route: {e}")
             return None
 
     def _create_fallback_routes(self, count: int) -> List[Route]:
