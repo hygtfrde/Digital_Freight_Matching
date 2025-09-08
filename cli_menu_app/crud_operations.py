@@ -144,7 +144,12 @@ class CRUDOperations:
             # Get required fields
             for field in config['required_fields']:
                 while True:
-                    value = get_input(f"Enter {field.replace('_', ' ')}: ")
+                    # Special handling for cargo type field
+                    if field == 'type' and entity_type == 'packages':
+                        print("Valid cargo types: standard, fragile, hazmat, refrigerated")
+                        value = get_input(f"Enter {field.replace('_', ' ')}: ")
+                    else:
+                        value = get_input(f"Enter {field.replace('_', ' ')}: ")
                     if not value:
                         print_error(f"{field.replace('_', ' ')} is required.")
                         continue
