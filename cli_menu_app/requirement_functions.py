@@ -21,6 +21,7 @@ from ui_components import (
     print_header, print_menu_box, get_input, pause, print_success,
     print_error, print_info, format_table_data, Colors
 )
+from crud_operations import CRUDOperations
 
 
 class RequirementFunctions:
@@ -29,7 +30,77 @@ class RequirementFunctions:
     def __init__(self, data_service):
         self.data_service = data_service
         self.processor = OrderProcessor()
+        self.crud_ops = CRUDOperations(data_service)
         self.running = True
+        self._data_sources = {}  # Track whether data came from DB or fallback
+
+    def _print_data_info_box(self, title: str, items: List[tuple]):
+        """Print a formatted data information box"""
+        print(f"\n{Colors.WARNING}┌─ {title} " + "─" * (58 - len(title)) + "┐{Colors.ENDC}")
+        for key, value in items:
+            if len(str(value)) > 45:
+                print(f"{Colors.WARNING}│{Colors.ENDC} {key:<15}: {str(value)[:45]}...")
+            else:
+                print(f"{Colors.WARNING}│{Colors.ENDC} {key:<15}: {value}")
+        print(f"{Colors.WARNING}└" + "─" * 60 + "┘{Colors.ENDC}")
+
+    def _display_route_info(self, route: Route, data_source: str = "Database"):
+        """Display detailed route information"""
+        items = [
+            ("Source", data_source),
+            ("Route ID", route.id),
+            ("Origin ID", route.location_origin_id),
+            ("Origin Coords", f"{route.location_origin.lat:.6f}, {route.location_origin.lng:.6f}"),
+            ("Destiny ID", route.location_destiny_id),  
+            ("Destiny Coords", f"{route.location_destiny.lat:.6f}, {route.location_destiny.lng:.6f}"),
+            ("Distance", f"{route.base_distance():.2f} km"),
+            ("Profitability", f"${route.profitability:.2f}/day"),
+            ("Status", "✅ Profitable" if route.profitability >= 0 else "❌ Losing Money")
+        ]
+        self._print_data_info_box("📍 ROUTE DATA", items)
+
+    def _display_truck_info(self, truck: Truck, data_source: str = "Database"):
+        """Display detailed truck information"""
+        items = [
+            ("Source", data_source),
+            ("Truck ID", truck.id),
+            ("Type", truck.type.title()),
+            ("Capacity", f"{truck.capacity:.1f} m³"),
+            ("Weight Limit", f"{self.processor.constants.MAX_WEIGHT_LBS:.0f} lbs"),
+            ("Autonomy", f"{truck.autonomy:.0f} km"),
+            ("Current Load", f"{len(truck.cargo_loads)} items"),
+            ("Available Space", f"{truck.capacity:.1f} m³ (empty)")
+        ]
+        self._print_data_info_box("🚛 TRUCK DATA", items)
+
+    def _display_location_info(self, locations: List[Location], data_source: str = "Database"):
+        """Display detailed location information"""
+        items = [("Source", data_source)]
+        for i, loc in enumerate(locations[:4], 1):  # Show up to 4 locations
+            items.append((f"Location {i} ID", loc.id))
+            items.append((f"Location {i} Coords", f"{loc.lat:.6f}, {loc.lng:.6f}"))
+        if len(locations) > 4:
+            items.append(("Additional Locs", f"+{len(locations) - 4} more"))
+        self._print_data_info_box("📍 LOCATION DATA", items)
+
+    def _display_order_info(self, order: Order):
+        """Display detailed order information"""
+        total_volume = order.total_volume()
+        total_weight = order.total_weight()
+        total_packages = sum(len(cargo.packages) for cargo in order.cargo)
+        
+        items = [
+            ("Order ID", order.id),
+            ("Pickup Loc ID", order.location_origin_id),
+            ("Pickup Coords", f"{order.location_origin.lat:.6f}, {order.location_origin.lng:.6f}"),
+            ("Dropoff Loc ID", order.location_destiny_id),
+            ("Dropoff Coords", f"{order.location_destiny.lat:.6f}, {order.location_destiny.lng:.6f}"),
+            ("Total Volume", f"{total_volume:.2f} m³"),
+            ("Total Weight", f"{total_weight:.1f} kg ({total_weight * 2.20462:.0f} lbs)"),
+            ("Cargo Loads", len(order.cargo)),
+            ("Total Packages", total_packages)
+        ]
+        self._print_data_info_box("📦 ORDER DATA", items)
 
     def show_requirements_menu(self, menu_stack):
         """Display requirements demo menu"""
@@ -94,24 +165,50 @@ class RequirementFunctions:
         print("from any point inside preexisting routes.")
         print("=" * 60)
 
-        try:
-            # Get test data from database
-            routes = self._get_sample_routes(1)
-            trucks = self._get_sample_trucks(1)
-            locations = self._get_sample_locations(6)
+        # Ask user for data mode
+        print(f"\n{Colors.WARNING}📋 DATA SELECTION MODE:{Colors.ENDC}")
+        print("  1. 🤖 Auto-select data (current behavior)")
+        print("  2. 🎯 Select specific Route, Truck & Locations")
+        print("  0. ↩️  Return to Requirements Menu")
+        
+        mode_choice = get_input("Select mode")
+        
+        if mode_choice == "0":
+            return
+        elif mode_choice == "2":
+            # User selection mode
+            selected_data = self._proximity_user_selection()
+            if not selected_data:
+                return
+            route, truck, locations = selected_data
+            data_mode = "User Selected"
+        else:
+            # Auto-select mode (original behavior)
+            try:
+                routes = self._get_sample_routes(1)
+                trucks = self._get_sample_trucks(1)
+                locations = self._get_sample_locations(6)
 
-            if not routes or not trucks or len(locations) < 4:
-                print_error("Insufficient test data available. Need routes, trucks, and locations.")
+                if not routes or not trucks or len(locations) < 4:
+                    print_error("Insufficient test data available. Need routes, trucks, and locations.")
+                    return
+
+                route = routes[0]
+                truck = trucks[0]
+                data_mode = "Auto Selected"
+            except Exception as e:
+                print_error(f"Error getting auto-selected data: {e}")
                 return
 
-            route = routes[0]
-            truck = trucks[0]
-
-            print(f"\n📍 ROUTE SETUP:")
-            print(f"   Route: {route.location_origin.lat:.4f},{route.location_origin.lng:.4f} → "
-                  f"{route.location_destiny.lat:.4f},{route.location_destiny.lng:.4f}")
-            print(f"   Distance: {route.base_distance():.1f} km")
-            print(f"   Profitability: ${route.profitability:.2f}/day")
+        try:
+            # Display data information boxes
+            route_source = self._data_sources.get('routes', 'Fallback Data') if data_mode == "Auto Selected" else data_mode
+            truck_source = self._data_sources.get('trucks', 'Fallback Data') if data_mode == "Auto Selected" else data_mode  
+            location_source = self._data_sources.get('locations', 'Fallback Data') if data_mode == "Auto Selected" else data_mode
+            
+            self._display_route_info(route, route_source)
+            self._display_truck_info(truck, truck_source)
+            self._display_location_info(locations, location_source)
 
             # Create test orders with various proximity scenarios
             test_orders = self._create_proximity_test_orders(route, locations[:4])
@@ -163,6 +260,128 @@ class RequirementFunctions:
         except Exception as e:
             print_error(f"Error in proximity demo: {e}")
 
+    def _proximity_user_selection(self):
+        """Allow user to select specific Route, Truck, and Locations for proximity testing"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 PROXIMITY TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 50)
+            
+            # Step 1: Select Route
+            print(f"\n📍 STEP 1: SELECT ROUTE")
+            print("-" * 25)
+            
+            # List available routes using CRUD
+            routes_data = self.data_service.get_all('routes')
+            if not routes_data:
+                print_error("No routes available in database.")
+                return None
+            
+            print(f"Available Routes:")
+            format_table_data(routes_data, ['id', 'location_origin_id', 'location_destiny_id', 'profitability'])
+            
+            while True:
+                route_id_input = get_input("Select Route ID")
+                if route_id_input.lower() == 'cancel':
+                    return None
+                try:
+                    route_id = int(route_id_input)
+                    # Get route by ID and convert to Route object
+                    route_dict = self.data_service.get_by_id('routes', route_id)
+                    if route_dict:
+                        route = self._dict_to_route(route_dict)
+                        if route:
+                            break
+                        else:
+                            print_error("Failed to process route data.")
+                    else:
+                        print_error(f"Route ID {route_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Route ID number.")
+            
+            print_success(f"✅ Selected Route ID: {route.id}")
+            
+            # Step 2: Select Truck  
+            print(f"\n🚛 STEP 2: SELECT TRUCK")
+            print("-" * 25)
+            
+            trucks_data = self.data_service.get_all('trucks')
+            if not trucks_data:
+                print_error("No trucks available in database.")
+                return None
+            
+            print(f"Available Trucks:")
+            format_table_data(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
+            
+            while True:
+                truck_id_input = get_input("Select Truck ID")
+                if truck_id_input.lower() == 'cancel':
+                    return None
+                try:
+                    truck_id = int(truck_id_input)
+                    truck_dict = self.data_service.get_by_id('trucks', truck_id)
+                    if truck_dict:
+                        truck = self._dict_to_truck(truck_dict)
+                        if truck:
+                            break
+                        else:
+                            print_error("Failed to process truck data.")
+                    else:
+                        print_error(f"Truck ID {truck_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Truck ID number.")
+            
+            print_success(f"✅ Selected Truck ID: {truck.id}")
+            
+            # Step 3: Select Locations for test orders
+            print(f"\n📍 STEP 3: SELECT LOCATIONS FOR TEST ORDERS")
+            print("-" * 45)
+            
+            locations_data = self.data_service.get_all('locations')
+            if not locations_data or len(locations_data) < 4:
+                print_error("Need at least 4 locations available in database.")
+                return None
+            
+            print(f"Available Locations:")
+            format_table_data(locations_data, ['id', 'lat', 'lng', 'marked'])
+            
+            locations = []
+            location_prompts = [
+                "Test Order 1 - Pickup Location ID",
+                "Test Order 1 - Dropoff Location ID", 
+                "Test Order 2 - Pickup Location ID",
+                "Test Order 2 - Dropoff Location ID"
+            ]
+            
+            for prompt in location_prompts:
+                while True:
+                    loc_id_input = get_input(f"{prompt}")
+                    if loc_id_input.lower() == 'cancel':
+                        return None
+                    try:
+                        loc_id = int(loc_id_input)
+                        loc_dict = self.data_service.get_by_id('locations', loc_id)
+                        if loc_dict:
+                            location = self._dict_to_location(loc_dict)
+                            if location:
+                                locations.append(location)
+                                print_success(f"✅ Selected Location ID: {location.id} ({location.lat:.4f}, {location.lng:.4f})")
+                                break
+                            else:
+                                print_error("Failed to process location data.")
+                        else:
+                            print_error(f"Location ID {loc_id} not found.")
+                    except ValueError:
+                        print_error("Please enter a valid Location ID number.")
+            
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Route: {route.id}, Truck: {truck.id}, Locations: {[loc.id for loc in locations]}")
+            
+            return (route, truck, locations)
+            
+        except Exception as e:
+            print_error(f"Error in user selection: {e}")
+            return None
+
     def _demo_cargo_capacity(self):
         """Requirement 2: Cargo Compartment Fitting"""
         print(f"\n{Colors.CYAN}📦 REQUIREMENT 2: CARGO COMPARTMENT FITTING{Colors.ENDC}")
@@ -184,10 +403,12 @@ class RequirementFunctions:
             truck = trucks[0]
             pickup_loc, dropoff_loc = locations[:2]
 
-            print(f"\n🚛 TRUCK SPECIFICATIONS:")
-            print(f"   Type: {truck.type}")
-            print(f"   Volume capacity: {truck.capacity:.0f} m³")
-            print(f"   Weight capacity: {self.processor.constants.MAX_WEIGHT_LBS:.0f} lbs")
+            # Display data information boxes
+            truck_source = self._data_sources.get('trucks', 'Fallback Data')
+            location_source = self._data_sources.get('locations', 'Fallback Data')
+            
+            self._display_truck_info(truck, truck_source)
+            self._display_location_info([pickup_loc, dropoff_loc], location_source)
 
             # Create test orders with various capacity scenarios
             test_orders = self._create_capacity_test_orders(pickup_loc, dropoff_loc)
@@ -199,7 +420,10 @@ class RequirementFunctions:
             invalid_count = 0
 
             for i, (description, order) in enumerate(test_orders, 1):
-                print(f"   Test {i}: {description}")
+                print(f"\n   📋 Test {i}: {description}")
+                
+                # Show detailed order information
+                self._display_order_info(order)
 
                 total_volume = order.total_volume()
                 total_weight_kg = order.total_weight()
@@ -257,6 +481,11 @@ class RequirementFunctions:
                 return
 
             route = routes[0]
+            
+            # Display route data information
+            route_source = self._data_sources.get('routes', 'Fallback Data')
+            self._display_route_info(route, route_source)
+            
             base_time = route.base_distance() / 60  # Assume 60 mph average
 
             print(f"\n📊 TIMING CALCULATIONS:")
@@ -297,6 +526,15 @@ class RequirementFunctions:
             if not routes:
                 print_error("No routes available for cost demo.")
                 return
+
+            # Display route data information for multiple routes
+            route_source = self._data_sources.get('routes', 'Fallback Data')
+            items = [("Source", route_source), ("Routes Available", len(routes))]
+            for i, route in enumerate(routes, 1):
+                items.append((f"Route {i} ID", route.id))
+                items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
+                items.append((f"Route {i} Profit", f"${route.profitability:.2f}"))
+            self._print_data_info_box("🛣️ MULTIPLE ROUTES DATA", items)
 
             print(f"\n💼 COST ANALYSIS:")
             print(f"   Cost per mile: ${self.processor.constants.TOTAL_COST_PER_MILE:.3f}")
@@ -347,6 +585,13 @@ class RequirementFunctions:
 
             route = routes[0]
             truck = trucks[0]
+
+            # Display data information boxes
+            route_source = self._data_sources.get('routes', 'Fallback Data')
+            truck_source = self._data_sources.get('trucks', 'Fallback Data')
+            
+            self._display_route_info(route, route_source)
+            self._display_truck_info(truck, truck_source)
 
             print(f"\n📈 AGGREGATION SIMULATION:")
             print(f"   Base route profitability: ${route.profitability:.2f}")
@@ -402,6 +647,15 @@ class RequirementFunctions:
                 print_error("No routes available for constraint demo.")
                 return
 
+            # Display route data information
+            route_source = self._data_sources.get('routes', 'Fallback Data')
+            items = [("Source", route_source), ("Routes Available", len(routes))]
+            for i, route in enumerate(routes, 1):
+                items.append((f"Route {i} ID", route.id))
+                items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
+                items.append((f"Route {i} Status", "✅ Profitable" if route.profitability >= 0 else "❌ Unprofitable"))
+            self._print_data_info_box("🔍 CONSTRAINT ANALYSIS DATA", items)
+
             print(f"\n🔍 ROUTE CONSTRAINT ANALYSIS:")
             
             for i, route in enumerate(routes, 1):
@@ -450,6 +704,16 @@ class RequirementFunctions:
                 print_error("No routes available for union break demo.")
                 return
 
+            # Display route data information
+            route_source = self._data_sources.get('routes', 'Fallback Data')
+            items = [("Source", route_source), ("Routes for Analysis", len(routes))]
+            for i, route in enumerate(routes, 1):
+                items.append((f"Route {i} ID", route.id))
+                items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
+                drive_time = route.base_distance() / 60
+                items.append((f"Route {i} Drive Time", f"{drive_time:.1f} hours"))
+            self._print_data_info_box("⏸️ UNION BREAK ANALYSIS DATA", items)
+
             print(f"\n⏰ BREAK REQUIREMENT ANALYSIS:")
             
             for i, route in enumerate(routes, 1):
@@ -492,13 +756,24 @@ class RequirementFunctions:
         print("• Hazardous: Special permits and isolation")
 
         try:
-            # Simulate different cargo type scenarios
+            # Display cargo type system information
             cargo_types = [
                 (CargoType.STANDARD, "Standard cargo"),
                 (CargoType.FRAGILE, "Fragile cargo"),
                 (CargoType.REFRIGERATED, "Refrigerated cargo"),
                 (CargoType.HAZARDOUS, "Hazardous cargo")
             ]
+            
+            items = [
+                ("Source", "System Schema"),
+                ("Total Cargo Types", len(cargo_types)),
+                ("Standard", "No restrictions"),
+                ("Fragile", "Isolation required"),
+                ("Refrigerated", "Temperature control + Standard OK"),
+                ("Hazardous", "Special permits + Isolation"),
+                ("Compatibility", "Matrix-based validation")
+            ]
+            self._print_data_info_box("🏷️ CARGO TYPE SYSTEM", items)
 
             compatibility_matrix = {
                 CargoType.STANDARD: [CargoType.STANDARD],
@@ -560,39 +835,127 @@ class RequirementFunctions:
     def _get_sample_routes(self, count: int = 1) -> List[Route]:
         """Get sample routes from data service"""
         try:
-            routes = self.data_service.get_all('routes')
-            if routes and len(routes) >= count:
-                return routes[:count]
+            routes_data = self.data_service.get_all('routes')
+            if routes_data and len(routes_data) >= count:
+                routes = []
+                for route_dict in routes_data[:count]:
+                    route = self._dict_to_route(route_dict)
+                    if route:
+                        routes.append(route)
+                if routes:
+                    self._data_sources['routes'] = f"{self.data_service.mode.title()} DB"
+                    return routes
             
-            # Create fallback routes if none exist
+            # Create fallback routes if none exist or conversion failed
+            self._data_sources['routes'] = "Fallback Data"
             return self._create_fallback_routes(count)
         except Exception as e:
             print_error(f"Error getting routes: {e}")
+            self._data_sources['routes'] = "Fallback Data"
             return self._create_fallback_routes(count)
 
     def _get_sample_trucks(self, count: int = 1) -> List[Truck]:
         """Get sample trucks from data service"""
         try:
-            trucks = self.data_service.get_all('trucks')
-            if trucks and len(trucks) >= count:
-                return trucks[:count]
+            trucks_data = self.data_service.get_all('trucks')
+            if trucks_data and len(trucks_data) >= count:
+                trucks = []
+                for truck_dict in trucks_data[:count]:
+                    truck = self._dict_to_truck(truck_dict)
+                    if truck:
+                        trucks.append(truck)
+                if trucks:
+                    self._data_sources['trucks'] = f"{self.data_service.mode.title()} DB"
+                    return trucks
             
+            self._data_sources['trucks'] = "Fallback Data"
             return self._create_fallback_trucks(count)
         except Exception as e:
             print_error(f"Error getting trucks: {e}")
+            self._data_sources['trucks'] = "Fallback Data"
             return self._create_fallback_trucks(count)
 
     def _get_sample_locations(self, count: int = 2) -> List[Location]:
         """Get sample locations from data service"""
         try:
-            locations = self.data_service.get_all('locations')
-            if locations and len(locations) >= count:
-                return locations[:count]
+            locations_data = self.data_service.get_all('locations')
+            if locations_data and len(locations_data) >= count:
+                locations = []
+                for location_dict in locations_data[:count]:
+                    location = self._dict_to_location(location_dict)
+                    if location:
+                        locations.append(location)
+                if locations:
+                    self._data_sources['locations'] = f"{self.data_service.mode.title()} DB"
+                    return locations
             
+            self._data_sources['locations'] = "Fallback Data"
             return self._create_fallback_locations(count)
         except Exception as e:
             print_error(f"Error getting locations: {e}")
+            self._data_sources['locations'] = "Fallback Data"
             return self._create_fallback_locations(count)
+
+    def _dict_to_route(self, route_dict: dict) -> Optional[Route]:
+        """Convert route dictionary to Route object"""
+        try:
+            # Get required location data
+            origin_data = route_dict.get('location_origin')
+            destiny_data = route_dict.get('location_destiny')
+            
+            # If locations are IDs, we need to fetch them separately
+            if isinstance(origin_data, int):
+                locations_data = self.data_service.get_all('locations')
+                origin_data = next((loc for loc in locations_data if loc.get('id') == origin_data), None)
+                destiny_data = next((loc for loc in locations_data if loc.get('id') == route_dict.get('location_destiny_id')), None)
+            
+            if not origin_data or not destiny_data:
+                return None
+            
+            origin = self._dict_to_location(origin_data)
+            destiny = self._dict_to_location(destiny_data)
+            
+            if not origin or not destiny:
+                return None
+            
+            return Route(
+                id=route_dict.get('id', 1),
+                location_origin_id=route_dict.get('location_origin_id', origin.id),
+                location_destiny_id=route_dict.get('location_destiny_id', destiny.id),
+                location_origin=origin,
+                location_destiny=destiny,
+                profitability=route_dict.get('profitability', -50.0),
+                orders=[]
+            )
+        except Exception as e:
+            print_error(f"Error converting route dict: {e}")
+            return None
+
+    def _dict_to_truck(self, truck_dict: dict) -> Optional[Truck]:
+        """Convert truck dictionary to Truck object"""
+        try:
+            return Truck(
+                id=truck_dict.get('id', 1),
+                capacity=truck_dict.get('capacity', 48.0),
+                autonomy=truck_dict.get('autonomy', 800.0),
+                type=truck_dict.get('type', 'standard'),
+                cargo_loads=[]
+            )
+        except Exception as e:
+            print_error(f"Error converting truck dict: {e}")
+            return None
+
+    def _dict_to_location(self, location_dict: dict) -> Optional[Location]:
+        """Convert location dictionary to Location object"""
+        try:
+            return Location(
+                id=location_dict.get('id', 1),
+                lat=float(location_dict.get('lat', 33.7490)),
+                lng=float(location_dict.get('lng', -84.3880))
+            )
+        except Exception as e:
+            print_error(f"Error converting location dict: {e}")
+            return None
 
     def _create_fallback_routes(self, count: int) -> List[Route]:
         """Create fallback routes for testing"""
