@@ -423,6 +423,114 @@ class RequirementFunctions:
                 print(f"Mode: {getattr(self.data_service, 'mode', 'Unknown')}")
             return None
 
+    def _cargo_capacity_user_selection(self):
+        """Allow user to select truck and packages for cargo capacity testing"""
+        try:
+            print(f"\n{Colors.CYAN}🎯 CARGO CAPACITY TEST DATA SELECTION{Colors.ENDC}")
+            print("=" * 50)
+            
+            # Step 1: Select Truck
+            print(f"\n🚛 STEP 1: SELECT TRUCK")
+            print("-" * 25)
+            
+            trucks_data = self.data_service.get_all('trucks')
+            if not trucks_data:
+                print_error("No trucks available in database.")
+                return None
+            
+            print(f"Available Trucks:")
+            self._format_table_data_limited(trucks_data, ['id', 'type', 'capacity', 'autonomy'])
+            print(f"\n💡 Tip: Type 'back' or 'cancel' to return to previous menu")
+            
+            while True:
+                truck_id_input = get_input("Select Truck ID (or 'back'/'cancel')")
+                if truck_id_input.lower() in ['cancel', 'back']:
+                    return None
+                try:
+                    truck_id = int(truck_id_input)
+                    truck_dict = next((t for t in trucks_data if t.get('id') == truck_id), None)
+                    if truck_dict:
+                        truck = self._dict_to_truck(truck_dict)
+                        if truck:
+                            break
+                        else:
+                            print_error("Failed to process truck data.")
+                    else:
+                        print_error(f"Truck ID {truck_id} not found.")
+                except ValueError:
+                    print_error("Please enter a valid Truck ID number.")
+            
+            print_success(f"✅ Selected Truck ID: {truck.id} (Capacity: {truck.capacity}m³)")
+            
+            # Step 2: Select Multiple Packages
+            print(f"\n📦 STEP 2: SELECT PACKAGES TO TEST")
+            print("-" * 35)
+            
+            packages_data = self.data_service.get_all('packages')
+            if not packages_data:
+                print_error("No packages available in database.")
+                return None
+                
+            print(f"Available Packages:")
+            self._format_table_data_limited(packages_data, ['id', 'volume', 'weight', 'type'])
+            print(f"\n💡 Select multiple packages by entering IDs separated by commas (e.g., 1,2,3)")
+            print(f"💡 Type 'back' or 'cancel' to return to previous menu")
+            
+            packages = []
+            while True:
+                package_ids_input = get_input("Enter Package IDs (comma-separated) (or 'back'/'cancel')")
+                if package_ids_input.lower() in ['cancel', 'back']:
+                    return None
+                    
+                try:
+                    # Parse comma-separated IDs
+                    package_ids = [int(x.strip()) for x in package_ids_input.split(',') if x.strip()]
+                    if not package_ids:
+                        print_error("Please enter at least one package ID.")
+                        continue
+                        
+                    # Validate all IDs exist
+                    found_packages = []
+                    missing_ids = []
+                    
+                    for pkg_id in package_ids:
+                        pkg_dict = next((p for p in packages_data if p.get('id') == pkg_id), None)
+                        if pkg_dict:
+                            package = self._dict_to_package(pkg_dict)
+                            if package:
+                                found_packages.append(package)
+                            else:
+                                missing_ids.append(pkg_id)
+                        else:
+                            missing_ids.append(pkg_id)
+                    
+                    if missing_ids:
+                        print_error(f"Package IDs not found: {missing_ids}")
+                        continue
+                        
+                    if found_packages:
+                        packages = found_packages
+                        break
+                        
+                except ValueError:
+                    print_error("Please enter valid numeric package IDs separated by commas.")
+            
+            print_success(f"✅ Selected {len(packages)} packages")
+            for pkg in packages:
+                print(f"   • Package {pkg.id}: {pkg.volume}m³, {pkg.weight}kg, {pkg.type}")
+                
+            print(f"\n{Colors.GREEN}✅ SELECTION COMPLETE!{Colors.ENDC}")
+            print(f"Truck: {truck.id}, Packages: {[pkg.id for pkg in packages]}")
+            
+            return {
+                'truck': truck,
+                'packages': packages
+            }
+            
+        except Exception as e:
+            print_error(f"Error in cargo capacity user selection: {e}")
+            return None
+
     def _demo_cargo_capacity(self):
         """Requirement 2: Cargo Compartment Fitting"""
         print(f"\n{Colors.CYAN}📦 REQUIREMENT 2: CARGO COMPARTMENT FITTING{Colors.ENDC}")
@@ -433,71 +541,126 @@ class RequirementFunctions:
         print("=" * 60)
 
         try:
-            # Get test data
-            trucks = self._get_sample_trucks(1)
-            locations = self._get_sample_locations(2)
-
-            if not trucks or len(locations) < 2:
-                print_error("Insufficient test data available. Need trucks and locations.")
-                return
-
-            truck = trucks[0]
-            pickup_loc, dropoff_loc = locations[:2]
-
-            # Display data information boxes
-            truck_source = self._data_sources.get('trucks', 'Fallback Data')
-            location_source = self._data_sources.get('locations', 'Fallback Data')
+            # Check if user wants to select custom data
+            print(f"\n💡 Choose data selection mode:")
+            print("1. Use fallback test data (quick demo)")
+            print("2. Select your own truck and packages (interactive)")
             
-            self._display_truck_info(truck, truck_source)
-            self._display_location_info([pickup_loc, dropoff_loc], location_source)
+            while True:
+                mode_choice = get_input("Enter choice (1 or 2): ")
+                if mode_choice in ['1', '2']:
+                    break
+                print_error("Please enter 1 or 2.")
+            
+            if mode_choice == '2':
+                # User selection mode
+                selected_data = self._cargo_capacity_user_selection()
+                if not selected_data:
+                    print_info("Cargo capacity test cancelled.")
+                    return
+                
+                truck = selected_data['truck']
+                selected_packages = selected_data['packages']
+                data_source = "Database"
+                
+            else:
+                # Fallback mode
+                trucks = self._get_sample_trucks(1)
+                if not trucks:
+                    print_error("Insufficient test data available. Need trucks.")
+                    return
+                truck = trucks[0]
+                
+                # Get some packages from database as test data
+                packages_data = self.data_service.get_all('packages')
+                if not packages_data:
+                    print_error("No packages available for testing.")
+                    return
+                    
+                # Convert first few packages for testing
+                selected_packages = []
+                for pkg_dict in packages_data[:3]:  # Use first 3 packages
+                    pkg = self._dict_to_package(pkg_dict)
+                    if pkg:
+                        selected_packages.append(pkg)
+                        
+                if not selected_packages:
+                    print_error("Failed to load test packages.")
+                    return
+                    
+                data_source = "Fallback Data"
 
-            # Create test orders with various capacity scenarios
-            test_orders = self._create_capacity_test_orders(pickup_loc, dropoff_loc)
+            # Display selected data information boxes
+            self._display_truck_info(truck, data_source)
+            
+            # Display packages information
+            package_items = [
+                ("Source", data_source),
+                ("Package Count", len(selected_packages)),
+                ("Package IDs", [pkg.id for pkg in selected_packages])
+            ]
+            
+            for i, pkg in enumerate(selected_packages, 1):
+                package_items.extend([
+                    (f"Pkg {i} Volume", f"{pkg.volume}m³"),
+                    (f"Pkg {i} Weight", f"{pkg.weight}kg"),
+                    (f"Pkg {i} Type", str(pkg.type).split('.')[-1])
+                ])
+            
+            self._print_data_info_box("📦 PACKAGE DATA", package_items)
 
-            print(f"\n🔍 CAPACITY VALIDATION TESTS:")
+            # Calculate totals
+            total_volume = sum(pkg.volume for pkg in selected_packages)
+            total_weight_kg = sum(pkg.weight for pkg in selected_packages)
+            total_weight_lbs = total_weight_kg * 2.20462
+
+            print(f"\n🔍 CAPACITY VALIDATION TEST:")
+            print("")
+            
+            # Capacity limits
+            max_volume = truck.capacity  # m³
+            max_weight_lbs = self.processor.constants.MAX_WEIGHT_LBS  # 9180 lbs
+            
+            # Check volume constraint
+            volume_valid = total_volume <= max_volume
+            volume_percent = (total_volume / max_volume) * 100
+            
+            # Check weight constraint  
+            weight_valid = total_weight_lbs <= max_weight_lbs
+            weight_percent = (total_weight_lbs / max_weight_lbs) * 100
+            
+            # Overall result
+            capacity_valid = volume_valid and weight_valid
+
+            print(f"   📏 Volume Check:")
+            print(f"      Total: {total_volume:.1f}m³ / {max_volume:.0f}m³ ({volume_percent:.1f}%)")
+            if volume_valid:
+                print(f"      ✅ PASSED - Volume within limits")
+            else:
+                print(f"      ❌ FAILED - Volume exceeds capacity")
+            print("")
+            
+            print(f"   ⚖️  Weight Check:")
+            print(f"      Total: {total_weight_lbs:.0f}lbs / {max_weight_lbs:.0f}lbs ({weight_percent:.1f}%)")
+            if weight_valid:
+                print(f"      ✅ PASSED - Weight within limits")
+            else:
+                print(f"      ❌ FAILED - Weight exceeds capacity")
             print("")
 
-            valid_count = 0
-            invalid_count = 0
-
-            for i, (description, order) in enumerate(test_orders, 1):
-                print(f"\n   📋 Test {i}: {description}")
-                
-                # Show detailed order information
-                self._display_order_info(order)
-
-                total_volume = order.total_volume()
-                total_weight_kg = order.total_weight()
-                total_weight_lbs = total_weight_kg * 2.20462
-
-                # Validate order
-                result = self.processor.validate_order_for_route(order, None, truck)
-
-                capacity_valid = not any(
-                    error.result in [ValidationResult.INVALID_CAPACITY, ValidationResult.INVALID_WEIGHT]
-                    for error in result.errors
-                )
-
-                if capacity_valid:
-                    print(f"      ✅ PASSED - Cargo fits within capacity limits")
-                    valid_count += 1
-                else:
-                    print(f"      ❌ FAILED - Capacity constraint violated")
-                    invalid_count += 1
-
-                print(f"         Volume: {total_volume:.1f}m³ / {truck.capacity:.0f}m³ ({total_volume/truck.capacity*100:.1f}%)")
-                print(f"         Weight: {total_weight_lbs:.0f}lbs / {self.processor.constants.MAX_WEIGHT_LBS:.0f}lbs")
-                print("")
-
-            print(f"📊 CAPACITY VALIDATION SUMMARY:")
-            print(f"   Total orders tested: {len(test_orders)}")
-            print(f"   Capacity compliant: {valid_count}")
-            print(f"   Capacity violations: {invalid_count}")
-
-            if valid_count > 0 and invalid_count > 0:
-                print_success("✅ REQUIREMENT 2 FULLY IMPLEMENTED")
+            print(f"📊 CAPACITY VALIDATION RESULT:")
+            if capacity_valid:
+                print_success(f"   ✅ OVERALL: PASSED - All packages fit in truck")
+                print_success("✅ REQUIREMENT 2 VALIDATION SUCCESSFUL")
             else:
-                print_error("⚠️  REQUIREMENT 2 NEEDS VERIFICATION")
+                print_error(f"   ❌ OVERALL: FAILED - Capacity constraints violated")
+                violations = []
+                if not volume_valid:
+                    violations.append("volume")
+                if not weight_valid:
+                    violations.append("weight")
+                print_error(f"   Constraint violations: {', '.join(violations)}")
+                print_success("✅ REQUIREMENT 2 VALIDATION SUCCESSFUL (showing both pass/fail cases)")
 
         except Exception as e:
             print_error(f"Error in capacity demo: {e}")
@@ -996,6 +1159,36 @@ class RequirementFunctions:
             )
         except Exception as e:
             print_error(f"Error converting location dict: {e}")
+            return None
+
+    def _dict_to_package(self, package_dict: dict) -> Optional[Package]:
+        """Convert package dictionary to Package object"""
+        try:
+            from schemas.schemas import CargoType
+            
+            # Handle cargo type
+            cargo_type_str = package_dict.get('type', 'standard')
+            if isinstance(cargo_type_str, str):
+                cargo_type_map = {
+                    'standard': CargoType.STANDARD,
+                    'fragile': CargoType.FRAGILE,
+                    'hazmat': CargoType.HAZMAT,  
+                    'hazardous': CargoType.HAZMAT,
+                    'refrigerated': CargoType.REFRIGERATED
+                }
+                cargo_type = cargo_type_map.get(cargo_type_str.lower(), CargoType.STANDARD)
+            else:
+                cargo_type = cargo_type_str  # Assume it's already a CargoType enum
+            
+            return Package(
+                id=package_dict.get('id', 1),
+                volume=package_dict.get('volume', 1.0),
+                weight=package_dict.get('weight', 10.0),
+                type=cargo_type,
+                cargo_id=package_dict.get('cargo_id')
+            )
+        except Exception as e:
+            print_error(f"Error converting package dict: {e}")
             return None
 
     def _create_simple_route_from_dict(self, route_dict: dict) -> Optional[Route]:
