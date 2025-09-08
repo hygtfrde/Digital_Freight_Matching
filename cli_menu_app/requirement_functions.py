@@ -135,7 +135,6 @@ class RequirementFunctions:
             ("6", "🛣️", "Route Constraints (path optimization)"),
             ("7", "⏸️", "Union Breaks (BONUS - labor rules)"),
             ("8", "🏷️", "Cargo Types (BONUS - compatibility)"),
-            ("9", "🎯", "Run All Requirements Demo"),
             ("0", "↩️", "Back to Main Menu")
         ]
 
@@ -160,8 +159,6 @@ class RequirementFunctions:
                 self._demo_union_breaks()
             elif choice == "8":
                 self._demo_cargo_types()
-            elif choice == "9":
-                self._demo_all_requirements()
             elif choice == "0":
                 return False
             else:
@@ -1950,34 +1947,6 @@ class RequirementFunctions:
         else:
             print_warning(f"⚠️ REQUIREMENT 8: INCOMPATIBLE CARGO DETECTED - REQUIRES SEPARATE TRANSPORT")
             print_warning(f"   Violations: {', '.join(set(violations))}")
-
-    def _demo_all_requirements(self):
-        """Run all requirements demos in sequence"""
-        print(f"\n{Colors.CYAN}🎯 RUNNING ALL REQUIREMENTS DEMO{Colors.ENDC}")
-        print("=" * 60)
-        
-        requirements = [
-            ("Location Proximity", self._demo_location_proximity),
-            ("Cargo Capacity", self._demo_cargo_capacity),
-            ("Pickup/Dropoff Timing", self._demo_pickup_dropoff_timing),
-            ("Cost Integration", self._demo_cost_integration),
-            ("Cargo Aggregation", self._demo_cargo_aggregation),
-            ("Route Constraints", self._demo_route_constraints),
-            ("Union Breaks (Bonus)", self._demo_union_breaks),
-            ("Cargo Types (Bonus)", self._demo_cargo_types)
-        ]
-
-        for i, (name, demo_func) in enumerate(requirements, 1):
-            print(f"\n{Colors.YELLOW}[{i}/8] {name}{Colors.ENDC}")
-            print("-" * 40)
-            demo_func()
-            
-            if i < len(requirements):
-                print(f"\n{Colors.CYAN}Press Enter to continue to next requirement...{Colors.ENDC}")
-                input()
-
-        print(f"\n{Colors.GREEN}✅ ALL REQUIREMENTS DEMONSTRATION COMPLETE{Colors.ENDC}")
-        print("=" * 60)
 
     # Helper methods for test data creation and retrieval
 
