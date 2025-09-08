@@ -272,10 +272,19 @@ class RequirementFunctions:
             print(f"   Proximity violations: {invalid_count}")
             print(f"   Success rate: {valid_count/len(test_orders)*100:.1f}%")
 
-            if valid_count > 0 and invalid_count > 0:
-                print_success("✅ REQUIREMENT 1 FULLY IMPLEMENTED")
+            # Determine overall result based on success rate
+            if invalid_count == 0 and valid_count > 0:
+                # Perfect score - all tests passed
+                print_success("✅ REQUIREMENT 1: ALL TESTS PASSED")
+            elif valid_count > 0 and invalid_count > 0:
+                # Mixed results - demonstration successful but not all tests passed
+                print_warning("⚠️ REQUIREMENT 1: PARTIAL SUCCESS - Demonstrates both pass/fail cases")
+            elif valid_count == 0 and invalid_count > 0:
+                # All tests failed
+                print_error("❌ REQUIREMENT 1: ALL TESTS FAILED")
             else:
-                print_error("⚠️  REQUIREMENT 1 NEEDS VERIFICATION")
+                # No tests or unclear result
+                print_error("⚠️ REQUIREMENT 1: NEEDS VERIFICATION")
 
         except Exception as e:
             print_error(f"Error in proximity demo: {e}")
@@ -651,7 +660,7 @@ class RequirementFunctions:
             print(f"📊 CAPACITY VALIDATION RESULT:")
             if capacity_valid:
                 print_success(f"   ✅ OVERALL: PASSED - All packages fit in truck")
-                print_success("✅ REQUIREMENT 2 VALIDATION SUCCESSFUL")
+                print_success("✅ REQUIREMENT 2: ALL CONSTRAINTS SATISFIED")
             else:
                 print_error(f"   ❌ OVERALL: FAILED - Capacity constraints violated")
                 violations = []
@@ -660,7 +669,7 @@ class RequirementFunctions:
                 if not weight_valid:
                     violations.append("weight")
                 print_error(f"   Constraint violations: {', '.join(violations)}")
-                print_success("✅ REQUIREMENT 2 VALIDATION SUCCESSFUL (showing both pass/fail cases)")
+                print_warning("⚠️ REQUIREMENT 2: CONSTRAINTS VIOLATED - Try selecting fewer/lighter packages")
 
         except Exception as e:
             print_error(f"Error in capacity demo: {e}")
