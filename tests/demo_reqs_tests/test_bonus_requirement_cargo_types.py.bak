@@ -393,7 +393,7 @@ class TestCargoTypeCompatibilityRequirement:
         print(f"  ✅ All other combinations = COMPATIBLE")
         
         # Verify enum completeness
-        expected_types = {'standard', 'fragile', 'hazmat', 'refrigerated'}
+        expected_types = {'STANDARD', 'FRAGILE', 'HAZMAT', 'REFRIGERATED'}
         actual_types = {ct.value for ct in all_cargo_types}
         
         print(f"\nENUM COMPLETENESS:")

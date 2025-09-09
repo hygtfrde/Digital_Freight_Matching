@@ -1,5 +1,7 @@
 from math import radians, cos, sin, asin, sqrt
 
+# TODO: implement OSMNX distance calculation option and show maps
+
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points

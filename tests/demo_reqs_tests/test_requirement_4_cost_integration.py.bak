@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from order_processor import OrderProcessor, OrderProcessingConstants, ValidationResult
 from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
-from app.database import engine, Route as DBRoute, Location as DBLocation, Truck as DBTruck
+from app.database import engine, get_session, Route as DBRoute, Location as DBLocation, Truck as DBTruck
 from sqlmodel import Session, select
 
 

@@ -16,7 +16,7 @@ import random
 # Add parent directories to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from app.database import engine, Client as DBClient, Location as DBLocation, Order as DBOrder, Truck as DBTruck, Route as DBRoute, Cargo as DBCargo, Package as DBPackage, CargoType
+from app.database import engine, get_session, Client as DBClient, Location as DBLocation, Order as DBOrder, Truck as DBTruck, Route as DBRoute, Cargo as DBCargo, Package as DBPackage, CargoType
 from services.cargo_aggregation_service import CargoAggregationService
 from services.route_generation_service import RouteGenerationService
 from sqlmodel import Session, select
