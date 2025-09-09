@@ -165,8 +165,8 @@ class TestCargoCapacityRequirement:
             else:
                 print(f"    ❌ FAILED - {result.errors}")
                 # Check if failure is due to capacity
-                capacity_error = any("capacity" in error.lower() or "weight" in error.lower() 
-                                   or "volume" in error.lower() for error in result.errors)
+                capacity_error = any("capacity" in error.message.lower() or "weight" in error.message.lower() 
+                                   or "volume" in error.message.lower() for error in result.errors)
                 if capacity_error and not should_pass:
                     print(f"    📦 Capacity constraint correctly enforced")
         

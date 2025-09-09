@@ -32,14 +32,14 @@ class TestCargoAggregationRequirement:
             yield session
     
     @pytest.fixture
-    def aggregation_service(self):
+    def aggregation_service(self, db_session):
         """Provide CargoAggregationService instance"""
-        return CargoAggregationService()
+        return CargoAggregationService(db_session)
     
     @pytest.fixture
-    def route_generation_service(self):
+    def route_generation_service(self, db_session):
         """Provide RouteGenerationService instance"""
-        return RouteGenerationService()
+        return RouteGenerationService(db_session)
     
     @pytest.fixture
     def db_data(self, db_session):
@@ -227,9 +227,21 @@ class TestCargoAggregationRequirement:
         
         print(f"\n✅ CARGO AGGREGATION TEST COMPLETED")
         
-        # Clean up test data
+        # Clean up test data - delete cargo and packages first, then orders
         for order_info in test_orders:
+            # Delete packages first
+            packages = db_session.exec(
+                select(DBPackage).where(DBPackage.cargo_id == order_info['cargo'].id)
+            ).all()
+            for package in packages:
+                db_session.delete(package)
+            
+            # Delete cargo
+            db_session.delete(order_info['cargo'])
+            
+            # Delete order
             db_session.delete(order_info['order'])
+        
         db_session.commit()
     
     def test_profitability_requirement_enforcement(self, route_generation_service, db_session, db_data):

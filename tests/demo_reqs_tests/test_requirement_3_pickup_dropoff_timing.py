@@ -242,7 +242,7 @@ class TestPickupDropoffTimingRequirement:
             print(f"    Validation: {'✅ PASS' if result.is_valid else '❌ FAIL'}")
             
             if not result.is_valid:
-                timing_error = any("time" in error.lower() or "hour" in error.lower() 
+                timing_error = any("time" in error.message.lower() or "hour" in error.message.lower() 
                                for error in result.errors)
                 if timing_error:
                     print(f"    ⏰ Time constraint correctly enforced")

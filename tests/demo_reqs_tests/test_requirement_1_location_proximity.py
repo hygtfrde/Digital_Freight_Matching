@@ -161,7 +161,7 @@ class TestLocationProximityRequirement:
             else:
                 print(f"    ❌ FAILED - {result.errors}")
                 # Check if failure is due to proximity
-                proximity_error = any("proximity" in error.lower() or "distance" in error.lower() 
+                proximity_error = any("proximity" in error.message.lower() or "distance" in error.message.lower() 
                                     for error in result.errors)
                 if proximity_error:
                     print(f"    📍 Proximity constraint correctly enforced")

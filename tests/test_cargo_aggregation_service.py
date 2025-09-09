@@ -246,7 +246,8 @@ def test_route_generation_service_initialization(test_session):
     
     assert service.session == test_session
     assert service.constants is not None
-    assert service.route_service is not None
+    # route_service is None for demo purposes (OSMnx too slow)
+    assert service.route_service is None
 
 
 def test_economic_viability_validation(test_session, sample_data):

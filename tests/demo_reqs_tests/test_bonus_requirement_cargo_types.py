@@ -226,8 +226,8 @@ class TestCargoTypeCompatibilityRequirement:
             else:
                 print(f"    ❌ FAILED - {result.errors}")
                 # Check if failure is due to cargo type compatibility
-                compatibility_error = any("cargo" in error.lower() or "type" in error.lower() or 
-                                        "hazmat" in error.lower() or "incompatible" in error.lower()
+                compatibility_error = any("cargo" in error.message.lower() or "type" in error.message.lower() or 
+                                        "hazmat" in error.message.lower() or "incompatible" in error.message.lower()
                                         for error in result.errors)
                 if compatibility_error and incompatible_combination:
                     incompatible_orders += 1
