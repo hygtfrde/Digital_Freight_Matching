@@ -144,7 +144,12 @@ class CRUDOperations:
             # Get required fields
             for field in config['required_fields']:
                 while True:
-                    value = get_input(f"Enter {field.replace('_', ' ')}: ")
+                    # Special handling for cargo type field
+                    if field == 'type' and entity_type == 'packages':
+                        print("Valid cargo types: standard, fragile, hazmat, refrigerated")
+                        value = get_input(f"Enter {field.replace('_', ' ')}: ")
+                    else:
+                        value = get_input(f"Enter {field.replace('_', ' ')}: ")
                     if not value:
                         print_error(f"{field.replace('_', ' ')} is required.")
                         continue
@@ -247,11 +252,19 @@ class CRUDOperations:
 
             # Update the entity
             updated = self.data_service.update(entity_type, entity_id, update_data)
-            if updated:
+            
+            # Check if update was successful (no error key in response)
+            if updated and isinstance(updated, dict) and 'error' in updated:
+                # Update failed - show error
+                error_msg = updated.get('error', 'Unknown error')
+                print_error(f"Failed to update {config['name']}: {error_msg}")
+            elif updated:
+                # Update successful
                 print_success(f"{config['name']} updated successfully!")
                 print_entity_details(updated, f"Updated {config['name']}")
             else:
-                print_error(f"Failed to update {config['name']}")
+                # No response or null response
+                print_error(f"Failed to update {config['name']}: No response from server")
 
             return True
 

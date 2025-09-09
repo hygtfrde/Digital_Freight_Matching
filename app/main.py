@@ -604,7 +604,7 @@ def create_package(package_data: dict, session: Session = Depends(get_session)):
             try:
                 cargo_type = CargoType(cargo_type)
             except ValueError:
-                cargo_type = CargoType.GENERAL
+                cargo_type = CargoType.STANDARD
 
         new_package = Package(
             volume=package_data.get("volume"),
@@ -639,7 +639,7 @@ def update_package(package_id: int, package_data: dict, session: Session = Depen
                 try:
                     cargo_type = CargoType(cargo_type)
                 except ValueError:
-                    cargo_type = CargoType.GENERAL
+                    cargo_type = CargoType.STANDARD
             package.type = cargo_type
         if "cargo_id" in package_data:
             package.cargo_id = package_data["cargo_id"]

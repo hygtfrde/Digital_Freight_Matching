@@ -10,6 +10,7 @@ from ui_components import (
     print_error, print_info, format_table_data, Colors
 )
 from crud_operations import CRUDOperations
+from requirement_functions import RequirementFunctions
 
 
 class MenuSystem:
@@ -18,6 +19,7 @@ class MenuSystem:
     def __init__(self, data_service):
         self.data_service = data_service
         self.crud_ops = CRUDOperations(data_service)
+        self.requirement_functions = RequirementFunctions(data_service)
         self.running = True
         self.current_menu = "main"
         self.menu_stack = ["Main"]
@@ -32,6 +34,7 @@ class MenuSystem:
             ("3", "📊", "System Status & Reports"),
             ("4", "⚙️", "System Operations"),
             ("5", "🔍", "Quick Database Check"),
+            ("6", "📋", "Demo Requirements"),
             ("0", "❌", "Exit")
         ]
 
@@ -193,6 +196,10 @@ class MenuSystem:
             pause()
             self.menu_stack.pop()
             return True
+        elif choice == "6":
+            self.menu_stack.append("Demo Requirements")
+            self.current_menu = "requirements"
+            return True
         elif choice == "0":
             print("\n" + Colors.WARNING + "Goodbye!" + Colors.ENDC)
             return False
@@ -350,6 +357,13 @@ class MenuSystem:
                     choice = get_input()
                     if not self.handle_operations_menu_choice(choice):
                         break
+
+                elif self.current_menu == "requirements":
+                    self.requirement_functions.show_requirements_menu(self.menu_stack)
+                    choice = get_input()
+                    if not self.requirement_functions.handle_requirements_choice(choice):
+                        self.menu_stack.pop()
+                        self.current_menu = "main"
 
         except KeyboardInterrupt:
             print("\n\n" + Colors.WARNING + "Goodbye!" + Colors.ENDC)

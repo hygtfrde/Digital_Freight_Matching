@@ -292,7 +292,9 @@ class DataService:
     def get_all(self, entity_type: str) -> List[Dict]:
         """Get all entities of a specific type"""
         if self.mode == "api":
-            return self.api_client.get_all(entity_type)
+            api_data = self.api_client.get_all(entity_type)
+            # Normalize API response format to match direct mode format
+            return self._normalize_api_response(entity_type, api_data)
         else:
             # Map entity types to database models
             entity_models = {
@@ -527,6 +529,198 @@ class DataService:
                 self.session.rollback()
                 logger.error(f"Error deleting {entity_type} {entity_id}: {e}")
                 return False
+
+    def create(self, entity_type: str, data: Dict) -> Dict:
+        """Create new entity - wrapper for create_entity"""
+        return self.create_entity(entity_type, data)
+
+    def update(self, entity_type: str, entity_id: int, data: Dict) -> Dict:
+        """Update existing entity"""
+        if self.mode == "api":
+            try:
+                return self.api_client.update(entity_type, entity_id, data)
+            except Exception as e:
+                logger.error(f"API update error: {e}")
+                return {"error": str(e)}
+        else:
+            # Map entity types to database models
+            entity_models = {
+                'trucks': Truck,
+                'orders': Order,
+                'routes': Route,
+                'clients': Client,
+                'locations': Location,
+                'packages': Package,
+                'cargo': Cargo
+            }
+
+            if entity_type not in entity_models:
+                raise ValueError(f"Unknown entity type: {entity_type}")
+
+            model = entity_models[entity_type]
+            db_entity = self.session.get(model, entity_id)
+
+            if not db_entity:
+                return {"error": f"{entity_type} with ID {entity_id} not found"}
+
+            # Update fields with provided data
+            for field_name, value in data.items():
+                if hasattr(db_entity, field_name):
+                    # Handle special data type conversions
+                    if field_name == 'created_at' and isinstance(value, str):
+                        from datetime import datetime
+                        value = datetime.fromisoformat(value)
+                    elif field_name == 'type' and entity_type == 'packages' and isinstance(value, str):
+                        from schemas.schemas import CargoType
+                        value = CargoType(value)
+
+                    setattr(db_entity, field_name, value)
+
+            try:
+                self.session.add(db_entity)
+                self.session.commit()
+                self.session.refresh(db_entity)
+
+                # Convert back to dictionary for return
+                entity_dict = {}
+                for field_name in model.__table__.columns.keys():
+                    value = getattr(db_entity, field_name)
+                    if value is None:
+                        entity_dict[field_name] = None
+                    elif isinstance(value, datetime):
+                        entity_dict[field_name] = value.isoformat()
+                    # Handle enum serialization
+                    elif hasattr(value, 'value'):
+                        entity_dict[field_name] = value.value
+                    else:
+                        entity_dict[field_name] = value
+
+                return entity_dict
+            except Exception as e:
+                self.session.rollback()
+                logger.error(f"Error updating {entity_type} {entity_id}: {e}")
+                return {"error": str(e)}
+
+    def _normalize_api_response(self, entity_type: str, api_data: List[Dict]) -> List[Dict]:
+        """Normalize API response format to match direct database format"""
+        if not api_data:
+            return api_data
+            
+        # Handle different entity types that need normalization
+        if entity_type == 'routes':
+            return self._normalize_routes_api(api_data)
+        elif entity_type == 'orders':
+            return self._normalize_orders_api(api_data)
+        else:
+            # For other entities, return as-is for now
+            return api_data
+
+    def _normalize_routes_api(self, routes_data: List[Dict]) -> List[Dict]:
+        """Normalize routes API response to match direct mode format"""
+        normalized_routes = []
+        
+        for route in routes_data:
+            normalized_route = {
+                'id': route.get('id'),
+                'profitability': route.get('profitability'),
+                'truck_id': route.get('truck_id'),
+            }
+            
+            # Extract location IDs from origin/destiny objects
+            origin = route.get('origin', {})
+            destiny = route.get('destiny', {})
+            
+            # Handle location ID extraction
+            if isinstance(origin, dict):
+                if 'id' in origin:
+                    normalized_route['location_origin_id'] = origin['id']
+                else:
+                    # API returns coordinates but no ID - try to find ID by coordinates
+                    normalized_route['location_origin_id'] = self._find_location_id_by_coords(
+                        origin.get('lat'), origin.get('lng')
+                    )
+            else:
+                normalized_route['location_origin_id'] = origin
+                
+            if isinstance(destiny, dict):
+                if 'id' in destiny:
+                    normalized_route['location_destiny_id'] = destiny['id']
+                else:
+                    # API returns coordinates but no ID - try to find ID by coordinates
+                    normalized_route['location_destiny_id'] = self._find_location_id_by_coords(
+                        destiny.get('lat'), destiny.get('lng')
+                    )
+            else:
+                normalized_route['location_destiny_id'] = destiny
+            
+            normalized_routes.append(normalized_route)
+        
+        return normalized_routes
+
+    def _normalize_orders_api(self, orders_data: List[Dict]) -> List[Dict]:
+        """Normalize orders API response to match direct mode format"""
+        normalized_orders = []
+        
+        for order in orders_data:
+            normalized_order = {
+                'id': order.get('id'),
+                'route_id': order.get('route_id'),
+                'contract_type': order.get('contract_type'),
+            }
+            
+            # Handle client field - API might return client object
+            client = order.get('client')
+            if isinstance(client, dict) and 'id' in client:
+                normalized_order['client_id'] = client['id']
+            else:
+                normalized_order['client_id'] = client
+            
+            # Extract location IDs from origin/destiny objects (same as routes)
+            origin = order.get('origin', {})
+            destiny = order.get('destiny', {})
+            
+            # Handle location ID extraction
+            if isinstance(origin, dict):
+                if 'id' in origin:
+                    normalized_order['location_origin_id'] = origin['id']
+                else:
+                    normalized_order['location_origin_id'] = self._find_location_id_by_coords(
+                        origin.get('lat'), origin.get('lng')
+                    )
+            else:
+                normalized_order['location_origin_id'] = origin
+                
+            if isinstance(destiny, dict):
+                if 'id' in destiny:
+                    normalized_order['location_destiny_id'] = destiny['id']
+                else:
+                    normalized_order['location_destiny_id'] = self._find_location_id_by_coords(
+                        destiny.get('lat'), destiny.get('lng')
+                    )
+            else:
+                normalized_order['location_destiny_id'] = destiny
+            
+            normalized_orders.append(normalized_order)
+        
+        return normalized_orders
+
+    def _find_location_id_by_coords(self, lat: float, lng: float) -> Optional[int]:
+        """Find location ID by coordinates - used when API doesn't provide IDs"""
+        if lat is None or lng is None:
+            return None
+            
+        try:
+            # Get all locations and find one that matches coordinates
+            locations = self.api_client.get_all('locations')
+            for location in locations:
+                # Match coordinates with small tolerance for floating point comparison
+                if (abs(location.get('lat', 0) - lat) < 0.0001 and 
+                    abs(location.get('lng', 0) - lng) < 0.0001):
+                    return location.get('id')
+        except Exception as e:
+            logger.warning(f"Could not find location ID for coordinates ({lat}, {lng}): {e}")
+            
+        return None
 
 
 def parse_cli_args() -> Dict:
