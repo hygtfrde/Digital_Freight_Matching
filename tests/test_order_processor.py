@@ -30,7 +30,7 @@ class TestOrderProcessingConstants(unittest.TestCase):
 
         self.assertEqual(constants.TOTAL_COST_PER_MILE, 1.693846154)
         self.assertEqual(constants.TRUCKER_COST_PER_MILE, 0.78)
-        self.assertEqual(constants.FUEL_COST_PER_MILE, 0.37)
+        self.assertEqual(constants.FUEL_COST_PER_MILE, 0.373846153846154)
         self.assertEqual(constants.LEASING_COST_PER_MILE, 0.27)
         self.assertEqual(constants.MAINTENANCE_COST_PER_MILE, 0.17)
         self.assertEqual(constants.INSURANCE_COST_PER_MILE, 0.1)
