@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from order_processor import OrderProcessor, ValidationResult
 from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
+from utils.distance_utils import calculate_time_hours, mph_to_kmh
 from app.database import engine, get_session, Route as DBRoute, Location as DBLocation, Truck as DBTruck
 from sqlmodel import Session, select
 
@@ -108,8 +109,10 @@ class TestPickupDropoffTimingRequirement:
         print(f"\nINPUT DATA FROM DATABASE:")
         print(f"  Route ID: {route.id}")
         print(f"  Route: ({route.location_origin.lat:.6f}, {route.location_origin.lng:.6f}) → ({route.location_destiny.lat:.6f}, {route.location_destiny.lng:.6f})")
+        business_speed_kmh = mph_to_kmh(processor.constants.AVG_SPEED_MPH)
+        base_driving_time = calculate_time_hours(route.base_distance(), business_speed_kmh)
         print(f"  Base Distance: {route.base_distance():.2f} km")
-        print(f"  Base Driving Time: {route.base_distance() / 80.0:.2f} hours (at 80 km/h)")
+        print(f"  Base Driving Time: {base_driving_time:.2f} hours (at {business_speed_kmh:.1f} km/h)")
         print(f"  Truck ID: {truck.id}")
         
         print(f"\nTIMING CONSTANTS:")
@@ -149,10 +152,10 @@ class TestPickupDropoffTimingRequirement:
             # Add orders to route for timing calculation
             route.orders = orders
             
-            # Calculate timing components
-            base_driving_time = route.base_distance() / 80.0  # hours
+            # Calculate timing components  
+            base_driving_time = calculate_time_hours(route.base_distance(), business_speed_kmh)
             stop_time = len(orders) * 2 * (processor.constants.STOP_TIME_MINUTES / 60.0)  # 2 stops per order
-            return_time = route.base_distance() / 80.0  # return journey
+            return_time = calculate_time_hours(route.base_distance(), business_speed_kmh)  # return journey
             
             total_time = base_driving_time + stop_time + return_time
             
@@ -254,7 +257,8 @@ class TestPickupDropoffTimingRequirement:
         route, truck = self.create_schema_objects(db_data)
         
         # Find a long route or create scenario that approaches 10 hours
-        base_time = route.base_distance() / 80.0  # one-way driving time
+        business_speed_kmh = mph_to_kmh(processor.constants.AVG_SPEED_MPH)
+        base_time = calculate_time_hours(route.base_distance(), business_speed_kmh)  # one-way driving time
         return_time = base_time  # return journey
         available_time_for_stops = 10.0 - (base_time + return_time)
         

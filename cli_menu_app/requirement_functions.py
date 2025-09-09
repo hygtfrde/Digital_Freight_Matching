@@ -16,6 +16,7 @@ if parent_dir not in sys.path:
 
 from order_processor import OrderProcessor, ValidationResult
 from schemas.schemas import Order, Route, Truck, Location, Cargo, Package, CargoType
+from utils.distance_utils import calculate_time_hours, mph_to_kmh
 
 from ui_components import (
     print_header, print_menu_box, get_input, pause, print_success,
@@ -715,10 +716,13 @@ class RequirementFunctions:
             # Display route data information
             self._display_route_info(route, data_source)
             
-            base_time = route.base_distance() / 60  # Assume 60 mph average
+            # Use business requirement speed: 80 km/h (from OrderProcessingConstants)
+            business_speed_kmh = mph_to_kmh(self.processor.constants.AVG_SPEED_MPH)  # Convert 50 mph to km/h
+            base_time = calculate_time_hours(route.base_distance(), business_speed_kmh)
 
             print(f"\n📊 TIMING CALCULATIONS:")
             print(f"   Base route distance: {route.base_distance():.1f} km")
+            print(f"   Business speed: {business_speed_kmh:.1f} km/h ({self.processor.constants.AVG_SPEED_MPH:.0f} mph)")
             print(f"   Base travel time: {base_time:.1f} hours")
             print(f"   Stop time per pickup/dropoff: {self.processor.constants.STOP_TIME_MINUTES} minutes")
             
@@ -1613,6 +1617,9 @@ class RequirementFunctions:
         print("BONUS Requirement: Union labor rules and mandatory breaks")
         print("for drivers during long hauls.")
         print("=" * 60)
+        
+        # Use consistent business speed for calculations
+        business_speed_kmh = mph_to_kmh(self.processor.constants.AVG_SPEED_MPH)
 
         print_info("Union break rules:")
         print("• Maximum 8 hours continuous driving")
@@ -1652,7 +1659,7 @@ class RequirementFunctions:
             for i, route in enumerate(routes, 1):
                 items.append((f"Route {i} ID", route.id))
                 items.append((f"Route {i} Distance", f"{route.base_distance():.1f} km"))
-                drive_time = route.base_distance() / 60
+                drive_time = calculate_time_hours(route.base_distance(), business_speed_kmh)
                 items.append((f"Route {i} Drive Time", f"{drive_time:.1f} hours"))
             self._print_data_info_box("⏸️ UNION BREAK ANALYSIS DATA", items)
 
