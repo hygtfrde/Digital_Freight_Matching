@@ -48,7 +48,7 @@ class OrderProcessingConstants:
     # Truck Information
     TOTAL_COST_PER_MILE = 1.693846154
     TRUCKER_COST_PER_MILE = 0.78
-    FUEL_COST_PER_MILE = 0.37
+    FUEL_COST_PER_MILE = 0.373846153846154  # GAS_PRICE / MILES_PER_GALLON = 2.43 / 6.5
     LEASING_COST_PER_MILE = 0.27
     MAINTENANCE_COST_PER_MILE = 0.17
     INSURANCE_COST_PER_MILE = 0.1
@@ -338,6 +338,26 @@ class OrderProcessor:
                 min_distance = distance
 
         return min_distance
+
+    def _calculate_distance_to_route(self, location: Location, route: Route) -> float:
+        """
+        Calculate minimum distance from location to route
+        Wrapper for _min_distance_to_route that works with route objects
+        """
+        if not hasattr(route, 'path') or not route.path:
+            # If route has no path, use route endpoints
+            route_points = []
+            if hasattr(route, 'location_origin') and route.location_origin:
+                route_points.append(route.location_origin)
+            if hasattr(route, 'location_destiny') and route.location_destiny:
+                route_points.append(route.location_destiny)
+            
+            if not route_points:
+                return 0.0
+                
+            return self._min_distance_to_route(location, route_points)
+        
+        return self._min_distance_to_route(location, route.path)
 
     def _calculate_route_deviation(self, order: Order, route: Route) -> float:
         """
